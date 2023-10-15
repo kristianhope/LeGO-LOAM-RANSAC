@@ -1338,17 +1338,39 @@ public:
         float ty = transformCur[4];
         float tz = transformCur[5];
 
-        float a1 = crx*sry*srz; float a2 = crx*crz*sry; float a3 = srx*sry; float a4 = tx*a1 - ty*a2 - tz*a3;
-        float a5 = srx*srz; float a6 = crz*srx; float a7 = ty*a6 - tz*crx - tx*a5;
-        float a8 = crx*cry*srz; float a9 = crx*cry*crz; float a10 = cry*srx; float a11 = tz*a10 + ty*a9 - tx*a8;
+        float a1 = crx*sry*srz; 
+        float a2 = crx*crz*sry; 
+        float a3 = srx*sry; 
+        float a4 = tx*a1 - ty*a2 - tz*a3;
+        float a5 = srx*srz; 
+        float a6 = crz*srx; 
+        float a7 = ty*a6 - tz*crx - tx*a5;
+        float a8 = crx*cry*srz; 
+        float a9 = crx*cry*crz; 
+        float a10 = cry*srx; 
+        float a11 = tz*a10 + ty*a9 - tx*a8;
 
-        float b1 = -crz*sry - cry*srx*srz; float b2 = cry*crz*srx - sry*srz;
-        float b5 = cry*crz - srx*sry*srz; float b6 = cry*srz + crz*srx*sry;
+        float b1 = -crz*sry - cry*srx*srz; 
+        float b2 = cry*crz*srx - sry*srz;
+        float b5 = cry*crz - srx*sry*srz; 
+        float b6 = cry*srz + crz*srx*sry;
 
         float c1 = -b6; float c2 = b5; float c3 = tx*b6 - ty*b5; float c4 = -crx*crz; float c5 = crx*srz; float c6 = ty*c5 + tx*-c4;
         float c7 = b2; float c8 = -b1; float c9 = tx*-b2 - ty*-b1;
 
-        for (int i = 0; i < pointSelNum; i++) {
+        int ransac_iterations = 10;
+
+        // Need to random sample a couple of indices in LaserCloudOri
+        // I need a TransformToStart function that takes in a transform
+        // I need to check the p2l distance on all the correspondences with the new transform
+        // I need to save the line points in similar fashion as laserCloudOri
+        // I need to remember the indices of the inliers
+        // I need to count the inliers
+        // I need to do this many times until I get the maximum number of inliers
+        // Maybe I should get all 6dof with edge features?
+
+        for (int i = 0; i < ransac_iterations; i++) {
+            for (int i = 0; i < pointSelNum; i++) {
 
             pointOri = laserCloudOri->points[i];
             coeff = coeffSel->points[i];
@@ -1375,7 +1397,9 @@ public:
         matAtA = matAt * matA;
         matAtB = matAt * matB;
         cv::solve(matAtA, matAtB, matX, cv::DECOMP_QR);
-
+        }
+        
+        
         if (iterCount == 0) {
             cv::Mat matE(1, 3, CV_32F, cv::Scalar::all(0));
             cv::Mat matV(3, 3, CV_32F, cv::Scalar::all(0));
@@ -1727,9 +1751,11 @@ public:
 
             if (laserCloudOri->points.size() < 10)
                 continue;
+            else
             if (calculateTransformationSurf(iterCount1) == false)
                 break;
-        }
+        }   
+
 
         pcl::toROSMsg(*laserCloudOri, laserCloudOutMsg);
 	    laserCloudOutMsg.header.stamp = cloudHeader.stamp;

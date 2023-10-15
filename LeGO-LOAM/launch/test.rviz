@@ -21,7 +21,7 @@ Panels:
   - Class: rviz/Time
     Name: Time
     SyncMode: 0
-    SyncSource: Velodyne
+    SyncSource: Surf Odom
   - Class: rviz/Help
     Name: Help
 Preferences:
@@ -369,7 +369,7 @@ Visualization Manager:
       Color: 255; 0; 127
       Color Transformer: FlatColor
       Decay Time: 0
-      Enabled: false
+      Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Min Color: 0; 0; 0
@@ -379,12 +379,12 @@ Visualization Manager:
       Selectable: true
       Size (Pixels): 3
       Size (m): 0.009999999776482582
-      Style: Points
+      Style: Flat Squares
       Topic: /ground_cloud
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: false
+      Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -500,8 +500,8 @@ Visualization Manager:
     - Alpha: 0.5
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 22.521381378173828
-        Min Value: -10.047517776489258
+        Max Value: 22.276348114013672
+        Min Value: -11.814796447753906
         Value: true
       Axis: Y
       Channel Name: intensity
@@ -661,7 +661,7 @@ Visualization Manager:
       Buffer Length: 1
       Class: rviz/Path
       Color: 173; 127; 168
-      Enabled: true
+      Enabled: false
       Head Diameter: 0.30000001192092896
       Head Length: 0.20000000298023224
       Length: 0.30000001192092896
@@ -680,7 +680,7 @@ Visualization Manager:
       Shaft Length: 0.10000000149011612
       Topic: /GNSS_path
       Unreliable: false
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -725,7 +725,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 56.45839309692383
+      Distance: 51.05645751953125
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -741,9 +741,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.5747960805892944
+      Pitch: 0.5947964191436768
       Target Frame: base_link
-      Yaw: 0.4560198485851288
+      Yaw: 1.0528595447540283
     Saved: ~
 Window Geometry:
   Displays:
