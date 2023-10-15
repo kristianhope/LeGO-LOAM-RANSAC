@@ -44,6 +44,7 @@ private:
     ros::Publisher pubFullCloud;
     ros::Publisher pubFullInfoCloud;
 
+    // result of segmentation
     ros::Publisher pubGroundCloud;
     ros::Publisher pubSegmentedCloud;
     ros::Publisher pubSegmentedCloudPure;
@@ -56,6 +57,7 @@ private:
     pcl::PointCloud<PointType>::Ptr fullCloud; // projected velodyne raw cloud, but saved in the form of 1-D matrix
     pcl::PointCloud<PointType>::Ptr fullInfoCloud; // same as fullCloud, but with intensity - range
 
+    // segmentation
     pcl::PointCloud<PointType>::Ptr groundCloud;
     pcl::PointCloud<PointType>::Ptr segmentedCloud;
     pcl::PointCloud<PointType>::Ptr segmentedCloudPure;
@@ -64,9 +66,9 @@ private:
     PointType nanPoint; // fill in fullCloud at each iteration
 
     cv::Mat rangeMat; // range matrix for range image
-    cv::Mat labelMat; // label matrix for segmentaiton marking
+    cv::Mat labelMat; // label matrix for segmentation marking
     cv::Mat groundMat; // ground matrix for ground cloud marking
-    int labelCount;
+    int labelCount; // Cluster ID
 
     float startOrientation;
     float endOrientation;
@@ -151,7 +153,7 @@ public:
 
         rangeMat = cv::Mat(N_SCAN, Horizon_SCAN, CV_32F, cv::Scalar::all(FLT_MAX));
         groundMat = cv::Mat(N_SCAN, Horizon_SCAN, CV_8S, cv::Scalar::all(0));
-        labelMat = cv::Mat(N_SCAN, Horizon_SCAN, CV_32S, cv::Scalar::all(0));
+        labelMat = cv::Mat(N_SCAN, Horizon_SCAN, CV_32S, cv::Scalar::all(0)); // 128x1024
         labelCount = 1;
 
         std::fill(fullCloud->points.begin(), fullCloud->points.end(), nanPoint);
@@ -246,8 +248,8 @@ public:
                 continue;
             
             rangeMat.at<float>(rowIdn, columnIdn) = range;
-
-            thisPoint.intensity = (float)rowIdn + (float)columnIdn / 10000.0;
+            // columnIdn:[0,H] (H:Horizon_SCAN)==>[0,1800]
+            thisPoint.intensity = (float)rowIdn + (float)columnIdn / 10000.0; //visualization purposes?
 
             index = columnIdn  + rowIdn * Horizon_SCAN;
             fullCloud->points[index] = thisPoint;
@@ -439,7 +441,7 @@ public:
 
         // check if this segment is valid
         bool feasibleSegment = false;
-        if (allPushedIndSize >= 30)
+        if (allPushedIndSize >= 30) // if we find a cluster with more than 30 points
             feasibleSegment = true;
         else if (allPushedIndSize >= segmentValidPointNum){
             int lineCount = 0;

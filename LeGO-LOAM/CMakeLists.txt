@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(lego_loam)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -O3")
 
 find_package(catkin REQUIRED COMPONENTS
   tf
@@ -58,3 +58,11 @@ target_link_libraries(mapOptmization ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${Open
 
 add_executable(transformFusion src/transformFusion.cpp)
 target_link_libraries(transformFusion ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES})
+
+add_executable(groundTruth src/groundTruth.cpp)
+target_link_libraries(groundTruth ${catkin_LIBRARIES})
+
+
+add_executable(GNSSpath src/GNSSpath.cpp)
+target_link_libraries(GNSSpath ${catkin_LIBRARIES})
+

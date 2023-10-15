@@ -40,15 +40,19 @@ private:
 
 	ros::NodeHandle nh;
 
+    // point cloud
     ros::Subscriber subLaserCloud;
     ros::Subscriber subLaserCloudInfo;
     ros::Subscriber subOutlierCloud;
     ros::Subscriber subImu;
 
+    // features
     ros::Publisher pubCornerPointsSharp;
     ros::Publisher pubCornerPointsLessSharp;
     ros::Publisher pubSurfPointsFlat;
     ros::Publisher pubSurfPointsLessFlat;
+    ros::Publisher pubCornerPointsOdom;
+    ros::Publisher pubSurfPointsOdom;
 
     pcl::PointCloud<PointType>::Ptr segmentedCloud;
     pcl::PointCloud<PointType>::Ptr outlierCloud;
@@ -63,11 +67,14 @@ private:
 
     pcl::VoxelGrid<PointType> downSizeFilter;
 
+
+    // timestamp information
     double timeScanCur;
     double timeNewSegmentedCloud;
     double timeNewSegmentedCloudInfo;
     double timeNewOutlierCloud;
 
+    // new pc flags
     bool newSegmentedCloud;
     bool newSegmentedCloudInfo;
     bool newOutlierCloud;
@@ -75,14 +82,18 @@ private:
     cloud_msgs::cloud_info segInfo;
     std_msgs::Header cloudHeader;
 
+    // init flags
     int systemInitCount;
     bool systemInited;
 
     std::vector<smoothness_t> cloudSmoothness;
     float *cloudCurvature;
+    // Flag of whether the point has been filtered, 0 - not filtered, 1 - filtered
     int *cloudNeighborPicked;
+    // Degree of curvature [-2,-1,0,1,2]
     int *cloudLabel;
 
+    // IMU stuff
     int imuPointerFront;
     int imuPointerLast;
     int imuPointerLastIteration;
@@ -128,9 +139,9 @@ private:
     float imuAngularRotationX[imuQueLength];
     float imuAngularRotationY[imuQueLength];
     float imuAngularRotationZ[imuQueLength];
+    // IMU stuff end
 
-
-
+    // Used for map optimization
     ros::Publisher pubLaserCloudCornerLast;
     ros::Publisher pubLaserCloudSurfLast;
     ros::Publisher pubLaserOdometry;
@@ -142,10 +153,12 @@ private:
     int laserCloudCornerLastNum;
     int laserCloudSurfLastNum;
 
+    // Corner point and corresponding line points
     int *pointSelCornerInd;
     float *pointSearchCornerInd1;
     float *pointSearchCornerInd2;
 
+    // Surface point and corrending three plane points
     int *pointSelSurfInd;
     float *pointSearchSurfInd1;
     float *pointSearchSurfInd2;
@@ -186,17 +199,22 @@ public:
     FeatureAssociation():
         nh("~")
         {
-
+        
+        // Sub to topics
         subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/segmented_cloud", 1, &FeatureAssociation::laserCloudHandler, this);
         subLaserCloudInfo = nh.subscribe<cloud_msgs::cloud_info>("/segmented_cloud_info", 1, &FeatureAssociation::laserCloudInfoHandler, this);
         subOutlierCloud = nh.subscribe<sensor_msgs::PointCloud2>("/outlier_cloud", 1, &FeatureAssociation::outlierCloudHandler, this);
         subImu = nh.subscribe<sensor_msgs::Imu>(imuTopic, 50, &FeatureAssociation::imuHandler, this);
 
+        // Visual topics?
         pubCornerPointsSharp = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_sharp", 1);
         pubCornerPointsLessSharp = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_less_sharp", 1);
         pubSurfPointsFlat = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_flat", 1);
         pubSurfPointsLessFlat = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_less_flat", 1);
+        pubCornerPointsOdom = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_corner_odom", 1);
+        pubSurfPointsOdom = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_surf_odom", 1);
 
+        // Features and odom used for mapping
         pubLaserCloudCornerLast = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_corner_last", 2);
         pubLaserCloudSurfLast = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_surf_last", 2);
         pubOutlierCloudLast = nh.advertise<sensor_msgs::PointCloud2>("/outlier_cloud_last", 2);
@@ -207,6 +225,8 @@ public:
 
     void initializationValue()
     {
+
+        // Allocate memory
         cloudCurvature = new float[N_SCAN*Horizon_SCAN];
         cloudNeighborPicked = new int[N_SCAN*Horizon_SCAN];
         cloudLabel = new int[N_SCAN*Horizon_SCAN];
@@ -222,8 +242,11 @@ public:
 
         cloudSmoothness.resize(N_SCAN*Horizon_SCAN);
 
+        // Min distance between grids
         downSizeFilter.setLeafSize(0.2, 0.2, 0.2);
 
+
+        // Init variables
         segmentedCloud.reset(new pcl::PointCloud<PointType>());
         outlierCloud.reset(new pcl::PointCloud<PointType>());
 
@@ -302,11 +325,11 @@ public:
         kdtreeCornerLast.reset(new pcl::KdTreeFLANN<PointType>());
         kdtreeSurfLast.reset(new pcl::KdTreeFLANN<PointType>());
 
-        laserOdometry.header.frame_id = "/camera_init";
-        laserOdometry.child_frame_id = "/laser_odom";
+        laserOdometry.header.frame_id = "camera_init";
+        laserOdometry.child_frame_id = "laser_odom";
 
-        laserOdometryTrans.frame_id_ = "/camera_init";
-        laserOdometryTrans.child_frame_id_ = "/laser_odom";
+        laserOdometryTrans.frame_id_ = "camera_init";
+        laserOdometryTrans.child_frame_id_ = "laser_odom";
         
         isDegenerate = false;
         matP = cv::Mat(6, 6, CV_32F, cv::Scalar::all(0));
@@ -314,6 +337,7 @@ public:
         frameCount = skipFrameNum;
     }
 
+    // Update cos and sin values
     void updateImuRollPitchYawStartSinCos(){
         cosImuRollStart = cos(imuRollStart);
         cosImuPitchStart = cos(imuPitchStart);
@@ -322,8 +346,6 @@ public:
         sinImuPitchStart = sin(imuPitchStart);
         sinImuYawStart = sin(imuYawStart);
     }
-
-
     void ShiftToStartIMU(float pointTime)
     {
         imuShiftFromStartXCur = imuShiftXCur - imuShiftXStart - imuVeloXStart * pointTime;
@@ -342,7 +364,6 @@ public:
         imuShiftFromStartYCur = -sinImuRollStart * x2 + cosImuRollStart * y2;
         imuShiftFromStartZCur = z2;
     }
-
     void VeloToStartIMU()
     {
         imuVeloFromStartXCur = imuVeloXCur - imuVeloXStart;
@@ -361,7 +382,6 @@ public:
         imuVeloFromStartYCur = -sinImuRollStart * x2 + cosImuRollStart * y2;
         imuVeloFromStartZCur = z2;
     }
-
     void TransformToStartIMU(PointType *p)
     {
         float x1 = cos(imuRollCur) * p->x - sin(imuRollCur) * p->y;
@@ -388,7 +408,6 @@ public:
         p->y = -sinImuRollStart * x5 + cosImuRollStart * y5 + imuShiftFromStartYCur;
         p->z = z5 + imuShiftFromStartZCur;
     }
-
     void AccumulateIMUShiftAndRotation()
     {
         float roll = imuRoll[imuPointerLast];
@@ -427,7 +446,6 @@ public:
             imuAngularRotationZ[imuPointerLast] = imuAngularRotationZ[imuPointerBack] + imuAngularVeloZ[imuPointerBack] * timeDiff;
         }
     }
-
     void imuHandler(const sensor_msgs::Imu::ConstPtr& imuIn)
     {
         double roll, pitch, yaw;
@@ -457,6 +475,9 @@ public:
 
         AccumulateIMUShiftAndRotation();
     }
+
+
+
 
     void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr& laserCloudMsg){
 
@@ -490,17 +511,21 @@ public:
 
     void adjustDistortion()
     {
+        // whether the lidar scan line is rotated more than half way
         bool halfPassed = false;
         int cloudSize = segmentedCloud->points.size();
 
         PointType point;
 
+        // Adjust distortion
         for (int i = 0; i < cloudSize; i++) {
-
+            
+            // Change coordinate system to right-hand, weird, preparing for visual odometry
             point.x = segmentedCloud->points[i].y;
             point.y = segmentedCloud->points[i].z;
             point.z = segmentedCloud->points[i].x;
-
+            
+            // We want to limit ori = [-PI, PI]
             float ori = -atan2(point.x, point.z);
             if (!halfPassed) {
                 if (ori < segInfo.startOrientation - M_PI / 2)
@@ -518,11 +543,30 @@ public:
                 else if (ori > segInfo.endOrientation + M_PI / 2)
                     ori -= 2 * M_PI;
             }
+            
+            
+            float relTime;
+            float endOriCorrected = segInfo.endOrientation - (M_PI * 2);
+            if ( (ori > segInfo.startOrientation) && (ori < endOriCorrected) ||
+                ( (endOriCorrected > M_PI) && ((ori > segInfo.startOrientation) || (ori + 2 * M_PI < endOriCorrected)) ) ) {
+                // We do not discern whether the point is measured when `relTime` is 0~0.0451(17deg/360) or 0.955~1.0 (The indistinguishable part in the upper figure)
+                relTime = 0.0;
+            } else {
+                if (ori <= segInfo.startOrientation) {
+                    relTime = (2 * M_PI - (segInfo.startOrientation - ori) ) / segInfo.orientationDiff;
+                } else {
+                    relTime = (ori - segInfo.startOrientation) / segInfo.orientationDiff;
+                }
+            }
 
-            float relTime = (ori - segInfo.startOrientation) / segInfo.orientationDiff;
+            //float relTime = (ori - segInfo.startOrientation) / segInfo.orientationDiff;
+            
+            // point intensity = line number + relative time
             point.intensity = int(segmentedCloud->points[i].intensity) + scanPeriod * relTime;
 
-            if (imuPointerLast >= 0) {
+            // IMU stuff
+            // IF IMU data
+            if (imuPointerLast >= 0) { 
                 float pointTime = relTime * scanPeriod;
                 imuPointerFront = imuPointerLastIteration;
                 while (imuPointerFront != imuPointerLast) {
@@ -608,7 +652,9 @@ public:
 
                     updateImuRollPitchYawStartSinCos();
                 } else {
+                    // Velocity projected to initial
                     VeloToStartIMU();
+                    // Transform coordinates to initial
                     TransformToStartIMU(&point);
                 }
             }
@@ -618,11 +664,14 @@ public:
         imuPointerLastIteration = imuPointerLast;
     }
 
+    // Calculate smoothness, not completely according to formula. Does not divide by |S| and ||r_i||
     void calculateSmoothness()
     {
         int cloudSize = segmentedCloud->points.size();
-        for (int i = 5; i < cloudSize - 5; i++) {
 
+        // iterate from the fifth to the end - 5 point, so that there are enough neighbors for all points
+        for (int i = 5; i < cloudSize - 5; i++) {
+            // add r_j 's and subtract 10*r_i according to formula
             float diffRange = segInfo.segmentedCloudRange[i-5] + segInfo.segmentedCloudRange[i-4]
                             + segInfo.segmentedCloudRange[i-3] + segInfo.segmentedCloudRange[i-2]
                             + segInfo.segmentedCloudRange[i-1] - segInfo.segmentedCloudRange[i] * 10
@@ -630,9 +679,12 @@ public:
                             + segInfo.segmentedCloudRange[i+3] + segInfo.segmentedCloudRange[i+4]
                             + segInfo.segmentedCloudRange[i+5];            
 
-            cloudCurvature[i] = diffRange*diffRange;
-
+            cloudCurvature[i] = diffRange*diffRange; //squared?
+            // gets modified in markOccludedPoints
             cloudNeighborPicked[i] = 0;
+
+            // gets modified in extractFeatures
+            // surfPointsFlat -1, surfPointsLessFlatScan 0, cornerPointsSharp 2, cornerPointsLessSharp 1
             cloudLabel[i] = 0;
 
             cloudSmoothness[i].value = cloudCurvature[i];
@@ -640,6 +692,7 @@ public:
         }
     }
 
+    // Mark bad points
     void markOccludedPoints()
     {
         int cloudSize = segmentedCloud->points.size();
@@ -689,34 +742,36 @@ public:
             surfPointsLessFlatScan->clear();
 
             for (int j = 0; j < 6; j++) {
-
+                // Start point, end point
                 int sp = (segInfo.startRingIndex[i] * (6 - j)    + segInfo.endRingIndex[i] * j) / 6;
                 int ep = (segInfo.startRingIndex[i] * (5 - j)    + segInfo.endRingIndex[i] * (j + 1)) / 6 - 1;
 
                 if (sp >= ep)
                     continue;
-
+                // sort points in order of smoothness
                 std::sort(cloudSmoothness.begin()+sp, cloudSmoothness.begin()+ep, by_value());
 
                 int largestPickedNum = 0;
                 for (int k = ep; k >= sp; k--) {
                     int ind = cloudSmoothness[k].ind;
+                    // check if point is valid to be picked as edge
                     if (cloudNeighborPicked[ind] == 0 &&
                         cloudCurvature[ind] > edgeThreshold &&
-                        segInfo.segmentedCloudGroundFlag[ind] == false) {
+                        segInfo.segmentedCloudGroundFlag[ind] == false) { // is not ground point
                     
                         largestPickedNum++;
-                        if (largestPickedNum <= 2) {
+                        if (largestPickedNum <= 2) { // Only pick the 2 sharpest features
                             cloudLabel[ind] = 2;
                             cornerPointsSharp->push_back(segmentedCloud->points[ind]);
                             cornerPointsLessSharp->push_back(segmentedCloud->points[ind]);
                         } else if (largestPickedNum <= 20) {
                             cloudLabel[ind] = 1;
-                            cornerPointsLessSharp->push_back(segmentedCloud->points[ind]);
+                            cornerPointsLessSharp->push_back(segmentedCloud->points[ind]); // All non ground features with curvature > treshold go in here
                         } else {
                             break;
                         }
 
+                        // if a point is picked we mark its neighbors as ineligble
                         cloudNeighborPicked[ind] = 1;
                         for (int l = 1; l <= 5; l++) {
                             int columnDiff = std::abs(int(segInfo.segmentedCloudColInd[ind + l] - segInfo.segmentedCloudColInd[ind + l - 1]));
@@ -736,9 +791,10 @@ public:
                 int smallestPickedNum = 0;
                 for (int k = sp; k <= ep; k++) {
                     int ind = cloudSmoothness[k].ind;
-                    if (cloudNeighborPicked[ind] == 0 &&
-                        cloudCurvature[ind] < surfThreshold &&
-                        segInfo.segmentedCloudGroundFlag[ind] == true) {
+                    // if eligble ground point
+                    if (cloudNeighborPicked[ind] == 0 && // not picked, or neighbors not picked
+                        cloudCurvature[ind] < surfThreshold // curvature low
+                        && segInfo.segmentedCloudGroundFlag[ind] == true) {  // is ground point, hmmm....
 
                         cloudLabel[ind] = -1;
                         surfPointsFlat->push_back(segmentedCloud->points[ind]);
@@ -770,7 +826,7 @@ public:
 
                 for (int k = sp; k <= ep; k++) {
                     if (cloudLabel[k] <= 0) {
-                        surfPointsLessFlatScan->push_back(segmentedCloud->points[k]);
+                        surfPointsLessFlatScan->push_back(segmentedCloud->points[k]); // both 0 (not assigned) and -1 goes in here
                     }
                 }
             }
@@ -790,92 +846,66 @@ public:
 	    if (pubCornerPointsSharp.getNumSubscribers() != 0){
 	        pcl::toROSMsg(*cornerPointsSharp, laserCloudOutMsg);
 	        laserCloudOutMsg.header.stamp = cloudHeader.stamp;
-	        laserCloudOutMsg.header.frame_id = "/camera";
+	        laserCloudOutMsg.header.frame_id = "camera";
 	        pubCornerPointsSharp.publish(laserCloudOutMsg);
 	    }
 
 	    if (pubCornerPointsLessSharp.getNumSubscribers() != 0){
 	        pcl::toROSMsg(*cornerPointsLessSharp, laserCloudOutMsg);
 	        laserCloudOutMsg.header.stamp = cloudHeader.stamp;
-	        laserCloudOutMsg.header.frame_id = "/camera";
+	        laserCloudOutMsg.header.frame_id = "camera";
 	        pubCornerPointsLessSharp.publish(laserCloudOutMsg);
 	    }
 
 	    if (pubSurfPointsFlat.getNumSubscribers() != 0){
 	        pcl::toROSMsg(*surfPointsFlat, laserCloudOutMsg);
 	        laserCloudOutMsg.header.stamp = cloudHeader.stamp;
-	        laserCloudOutMsg.header.frame_id = "/camera";
+	        laserCloudOutMsg.header.frame_id = "camera";
 	        pubSurfPointsFlat.publish(laserCloudOutMsg);
 	    }
 
 	    if (pubSurfPointsLessFlat.getNumSubscribers() != 0){
 	        pcl::toROSMsg(*surfPointsLessFlat, laserCloudOutMsg);
 	        laserCloudOutMsg.header.stamp = cloudHeader.stamp;
-	        laserCloudOutMsg.header.frame_id = "/camera";
+	        laserCloudOutMsg.header.frame_id = "camera";
 	        pubSurfPointsLessFlat.publish(laserCloudOutMsg);
 	    }
+        
+	    
+	    
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
     void TransformToStart(PointType const * const pi, PointType * const po)
     {
-        float s = 10 * (pi->intensity - int(pi->intensity));
+        // interpolation coefficient calculation
+        // point.intensity = int(segmentedCloud->points[i].intensity) + scanPeriod * relTime;
+        // Change to 20 of 20 Hz? 1/s * s
+        float s = 10 * (pi->intensity - int(pi->intensity)); //The relative time is in the decimal part of intensity
 
+        /********************************************************************************
+        Ry*Rx*Rz*Pl, transform point to the global frame
+        *********************************************************************************/
         float rx = s * transformCur[0];
         float ry = s * transformCur[1];
         float rz = s * transformCur[2];
         float tx = s * transformCur[3];
         float ty = s * transformCur[4];
         float tz = s * transformCur[5];
-
+        
+        // z-x-y rotation 
+        // Rotate around z-axis and translate
         float x1 = cos(rz) * (pi->x - tx) + sin(rz) * (pi->y - ty);
         float y1 = -sin(rz) * (pi->x - tx) + cos(rz) * (pi->y - ty);
         float z1 = (pi->z - tz);
 
+        // Rotate around x-axis
         float x2 = x1;
         float y2 = cos(rx) * y1 + sin(rx) * z1;
         float z2 = -sin(rx) * y1 + cos(rx) * z1;
 
+        // Rotate around y-axis
         po->x = cos(ry) * x2 - sin(ry) * z2;
         po->y = y2;
         po->z = sin(ry) * x2 + cos(ry) * z2;
@@ -884,8 +914,12 @@ public:
 
     void TransformToEnd(PointType const * const pi, PointType * const po)
     {
+        // interpolation coefficient calculation
         float s = 10 * (pi->intensity - int(pi->intensity));
 
+        /********************************************************************************
+        Ry*Rx*Rz*Pl, transform point to the global frame
+        *********************************************************************************/
         float rx = s * transformCur[0];
         float ry = s * transformCur[1];
         float rz = s * transformCur[2];
@@ -893,6 +927,7 @@ public:
         float ty = s * transformCur[4];
         float tz = s * transformCur[5];
 
+        // Project to start first, then to end
         float x1 = cos(rz) * (pi->x - tx) + sin(rz) * (pi->y - ty);
         float y1 = -sin(rz) * (pi->x - tx) + cos(rz) * (pi->y - ty);
         float z1 = (pi->z - tz);
@@ -900,10 +935,10 @@ public:
         float x2 = x1;
         float y2 = cos(rx) * y1 + sin(rx) * z1;
         float z2 = -sin(rx) * y1 + cos(rx) * z1;
-
+        // Rotate around the y-axis
         float x3 = cos(ry) * x2 - sin(ry) * z2;
         float y3 = y2;
-        float z3 = sin(ry) * x2 + cos(ry) * z2;
+        float z3 = sin(ry) * x2 + cos(ry) * z2; // The corrected points, relative to the starting point are found
 
         rx = transformCur[0];
         ry = transformCur[1];
@@ -1043,24 +1078,33 @@ public:
 
     void findCorrespondingCornerFeatures(int iterCount){
 
-        int cornerPointsSharpNum = cornerPointsSharp->points.size();
+        int cornerPointsSharpNum = cornerPointsSharp->points.size(); // CornerPointsSharp will be cleared and updated along the way
 
+        // Process the feature points with largest curvature in the current point cloud,
+        // and find two nearest points from features with largest curvature from previous point cloud.
+        // One point is found using KD tree search and the second based on this point
         for (int i = 0; i < cornerPointsSharpNum; i++) {
-
+            
+            // Transform to t_k+1 so that the point is in the frame of the last cloud
+            // The transformation will be updated every iteration, therefore we need to find new correspondences as the transformation gets better
             TransformToStart(&cornerPointsSharp->points[i], &pointSel);
 
             if (iterCount % 5 == 0) {
-
+                // Every 5 iteration re-find the closest points
                 kdtreeCornerLast->nearestKSearch(pointSel, 1, pointSearchInd, pointSearchSqDis);
                 int closestPointInd = -1, minPointInd2 = -1;
                 
-                if (pointSearchSqDis[0] < nearestFeatureSearchSqDist) {
+                if (pointSearchSqDis[0] < nearestFeatureSearchSqDist) { // If the nearest point indeed is very near
                     closestPointInd = pointSearchInd[0];
+
+                    // Extract the nearest point line number
                     int closestPointScan = int(laserCloudCornerLast->points[closestPointInd].intensity);
 
                     float pointSqDis, minPointSqDis2 = nearestFeatureSearchSqDist;
-                    for (int j = closestPointInd + 1; j < cornerPointsSharpNum; j++) {
-                        if (int(laserCloudCornerLast->points[j].intensity) > closestPointScan + 2.5) {
+
+                    //find second point
+                    for (int j = closestPointInd + 1; j < cornerPointsSharpNum; j++) { // Search in direction of increasing scanID
+                        if (int(laserCloudCornerLast->points[j].intensity) > closestPointScan + 2.5) { // 
                             break;
                         }
 
@@ -1078,7 +1122,7 @@ public:
                             }
                         }
                     }
-                    for (int j = closestPointInd - 1; j >= 0; j--) {
+                    for (int j = closestPointInd - 1; j >= 0; j--) { // search in direction of decreasing scanID
                         if (int(laserCloudCornerLast->points[j].intensity) < closestPointScan - 2.5) {
                             break;
                         }
@@ -1102,12 +1146,13 @@ public:
                 pointSearchCornerInd1[i] = closestPointInd;
                 pointSearchCornerInd2[i] = minPointInd2;
             }
-
+            // If both points found
             if (pointSearchCornerInd2[i] >= 0) {
 
                 tripod1 = laserCloudCornerLast->points[pointSearchCornerInd1[i]];
                 tripod2 = laserCloudCornerLast->points[pointSearchCornerInd2[i]];
 
+                // selected points: 0 - point from current cloud, 1 and 2 are the closest points from the kd tree (prev pc)
                 float x0 = pointSel.x;
                 float y0 = pointSel.y;
                 float z0 = pointSel.z;
@@ -1118,26 +1163,31 @@ public:
                 float y2 = tripod2.y;
                 float z2 = tripod2.z;
 
+                // Cross products
                 float m11 = ((x0 - x1)*(y0 - y2) - (x0 - x2)*(y0 - y1));
                 float m22 = ((x0 - x1)*(z0 - z2) - (x0 - x2)*(z0 - z1));
                 float m33 = ((y0 - y1)*(z0 - z2) - (y0 - y2)*(z0 - z1));
 
                 float a012 = sqrt(m11 * m11  + m22 * m22 + m33 * m33);
 
+                // distance between the two points
                 float l12 = sqrt((x1 - x2)*(x1 - x2) + (y1 - y2)*(y1 - y2) + (z1 - z2)*(z1 - z2));
-
+                
+                // Calculate jacobian
                 float la =  ((y1 - y2)*m11 + (z1 - z2)*m22) / a012 / l12;
 
                 float lb = -((x1 - x2)*m11 - (z1 - z2)*m33) / a012 / l12;
 
                 float lc = -((x1 - x2)*m22 + (y1 - y2)*m33) / a012 / l12;
 
-                float ld2 = a012 / l12;
+                float ld2 = a012 / l12; // point to line distance
 
                 float s = 1;
-                if (iterCount >= 5) {
-                    s = 1 - 1.8 * fabs(ld2);
-                }
+                if (iterCount >= 2) {
+                    s = 1 - 3.6 * fabs(ld2); // Only keep points with small p2l distances, small p2l --> s close to 1
+                } // If ld2 = 0.5 --> s = 1 - 0.9 = 0.1
+                // Reduce to 0.25 since 20 Hz
+                // factor 1.8 --> 3.6
 
                 if (s > 0.1 && ld2 != 0) {
                     coeff.x = s * la; 
@@ -1145,7 +1195,7 @@ public:
                     coeff.z = s * lc;
                     coeff.intensity = s * ld2;
                   
-                    laserCloudOri->push_back(cornerPointsSharp->points[i]);
+                    laserCloudOri->push_back(cornerPointsSharp->points[i]); // Only used for odometry
                     coeffSel->push_back(coeff);
                 }
             }
@@ -1249,8 +1299,8 @@ public:
                 float pd2 = pa * pointSel.x + pb * pointSel.y + pc * pointSel.z + pd;
 
                 float s = 1;
-                if (iterCount >= 5) {
-                    s = 1 - 1.8 * fabs(pd2) / sqrt(sqrt(pointSel.x * pointSel.x
+                if (iterCount >= 2) {
+                    s = 1 - 3.6 * fabs(pd2) / sqrt(sqrt(pointSel.x * pointSel.x
                             + pointSel.y * pointSel.y + pointSel.z * pointSel.z));
                 }
 
@@ -1621,13 +1671,13 @@ public:
         sensor_msgs::PointCloud2 laserCloudCornerLast2;
         pcl::toROSMsg(*laserCloudCornerLast, laserCloudCornerLast2);
         laserCloudCornerLast2.header.stamp = cloudHeader.stamp;
-        laserCloudCornerLast2.header.frame_id = "/camera";
+        laserCloudCornerLast2.header.frame_id = "camera";
         pubLaserCloudCornerLast.publish(laserCloudCornerLast2);
 
         sensor_msgs::PointCloud2 laserCloudSurfLast2;
         pcl::toROSMsg(*laserCloudSurfLast, laserCloudSurfLast2);
         laserCloudSurfLast2.header.stamp = cloudHeader.stamp;
-        laserCloudSurfLast2.header.frame_id = "/camera";
+        laserCloudSurfLast2.header.frame_id = "camera";
         pubLaserCloudSurfLast.publish(laserCloudSurfLast2);
 
         transformSum[0] += imuPitchStart;
@@ -1664,11 +1714,12 @@ public:
     }
 
     void updateTransformation(){
+        sensor_msgs::PointCloud2 laserCloudOutMsg;
 
         if (laserCloudCornerLastNum < 10 || laserCloudSurfLastNum < 100)
             return;
 
-        for (int iterCount1 = 0; iterCount1 < 25; iterCount1++) {
+        for (int iterCount1 = 0; iterCount1 < 25; iterCount1++) { // 25 iterations
             laserCloudOri->clear();
             coeffSel->clear();
 
@@ -1680,6 +1731,12 @@ public:
                 break;
         }
 
+        pcl::toROSMsg(*laserCloudOri, laserCloudOutMsg);
+	    laserCloudOutMsg.header.stamp = cloudHeader.stamp;
+	    laserCloudOutMsg.header.frame_id = "camera";
+	    pubSurfPointsOdom.publish(laserCloudOutMsg);
+
+
         for (int iterCount2 = 0; iterCount2 < 25; iterCount2++) {
 
             laserCloudOri->clear();
@@ -1687,12 +1744,19 @@ public:
 
             findCorrespondingCornerFeatures(iterCount2);
 
-            if (laserCloudOri->points.size() < 10)
+            if (laserCloudOri->points.size() < 10) // too few features
                 continue;
             if (calculateTransformationCorner(iterCount2) == false)
                 break;
         }
+        
+        pcl::toROSMsg(*laserCloudOri, laserCloudOutMsg);
+	    laserCloudOutMsg.header.stamp = cloudHeader.stamp;
+	    laserCloudOutMsg.header.frame_id = "camera";
+	    pubCornerPointsOdom.publish(laserCloudOutMsg);
     }
+
+    
 
     void integrateTransformation(){
         float rx, ry, rz, tx, ty, tz;
@@ -1797,19 +1861,19 @@ public:
             sensor_msgs::PointCloud2 outlierCloudLast2;
             pcl::toROSMsg(*outlierCloud, outlierCloudLast2);
             outlierCloudLast2.header.stamp = cloudHeader.stamp;
-            outlierCloudLast2.header.frame_id = "/camera";
+            outlierCloudLast2.header.frame_id = "camera";
             pubOutlierCloudLast.publish(outlierCloudLast2);
 
             sensor_msgs::PointCloud2 laserCloudCornerLast2;
             pcl::toROSMsg(*laserCloudCornerLast, laserCloudCornerLast2);
             laserCloudCornerLast2.header.stamp = cloudHeader.stamp;
-            laserCloudCornerLast2.header.frame_id = "/camera";
+            laserCloudCornerLast2.header.frame_id = "camera";
             pubLaserCloudCornerLast.publish(laserCloudCornerLast2);
 
             sensor_msgs::PointCloud2 laserCloudSurfLast2;
             pcl::toROSMsg(*laserCloudSurfLast, laserCloudSurfLast2);
             laserCloudSurfLast2.header.stamp = cloudHeader.stamp;
-            laserCloudSurfLast2.header.frame_id = "/camera";
+            laserCloudSurfLast2.header.frame_id = "camera";
             pubLaserCloudSurfLast.publish(laserCloudSurfLast2);
         }
     }
@@ -1819,7 +1883,7 @@ public:
 
         if (newSegmentedCloud && newSegmentedCloudInfo && newOutlierCloud &&
             std::abs(timeNewSegmentedCloudInfo - timeNewSegmentedCloud) < 0.05 &&
-            std::abs(timeNewOutlierCloud - timeNewSegmentedCloud) < 0.05){
+            std::abs(timeNewOutlierCloud - timeNewSegmentedCloud) < 0.05){ // in sync
 
             newSegmentedCloud = false;
             newSegmentedCloudInfo = false;

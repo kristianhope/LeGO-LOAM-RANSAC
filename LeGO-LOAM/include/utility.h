@@ -6,11 +6,14 @@
 
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <sensor_msgs/NavSatFix.h>
 #include <nav_msgs/Odometry.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <nav_msgs/Path.h>
 
 #include "cloud_msgs/cloud_info.h"
 
-#include <opencv/cv.h>
+
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -22,6 +25,8 @@
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/common/common.h>
 #include <pcl/registration/icp.h>
+
+#include <opencv2/opencv.hpp>
 
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
@@ -50,22 +55,31 @@ using namespace std;
 
 typedef pcl::PointXYZI  PointType;
 
-extern const string pointCloudTopic = "/velodyne_points";
+extern const string pointCloudTopic = "/os_cloud_node/points";
 extern const string imuTopic = "/imu/data";
 
 // Save pcd
 extern const string fileDirectory = "/tmp/";
 
 // Using velodyne cloud "ring" channel for image projection (other lidar may have different name for this channel, change "PointXYZIR" below)
-extern const bool useCloudRing = true; // if true, ang_res_y and ang_bottom are not used
+extern const bool useCloudRing = false;// if true, ang_res_y and ang_bottom are not used
 
 // VLP-16
+/*
 extern const int N_SCAN = 16;
 extern const int Horizon_SCAN = 1800;
 extern const float ang_res_x = 0.2;
 extern const float ang_res_y = 2.0;
 extern const float ang_bottom = 15.0+0.1;
-extern const int groundScanInd = 7;
+extern const int groundScanInd = 7;*/
+
+//Ouster 1024x20
+extern const int N_SCAN = 128;
+extern const int Horizon_SCAN = 1024;
+extern const float ang_res_x = 360.0/float(1024);
+extern const float ang_res_y = 45/float(128-1);
+extern const float ang_bottom = 22.5 + 0.1;
+extern const int groundScanInd = 30;
 
 // HDL-32E
 // extern const int N_SCAN = 32;
@@ -101,16 +115,16 @@ extern const int groundScanInd = 7;
 // extern const float ang_bottom = 16.6+0.1;
 // extern const int groundScanInd = 15;
 
-extern const bool loopClosureEnableFlag = false;
+extern const bool loopClosureEnableFlag = true;
 extern const double mappingProcessInterval = 0.3;
 
-extern const float scanPeriod = 0.1;
+extern const float scanPeriod = 0.05; // 20 Hz?
 extern const int systemDelay = 0;
 extern const int imuQueLength = 200;
 
-extern const float sensorMinimumRange = 1.0;
+extern const float sensorMinimumRange = 5; // 1m
 extern const float sensorMountAngle = 0.0;
-extern const float segmentTheta = 60.0/180.0*M_PI; // decrese this value may improve accuracy
+extern const float segmentTheta = 60.0/180.0*M_PI; // decrese this value may improve accuracy?? The larger the better
 extern const int segmentValidPointNum = 5;
 extern const int segmentValidLineNum = 3;
 extern const float segmentAlphaX = ang_res_x / 180.0 * M_PI;
@@ -120,9 +134,9 @@ extern const float segmentAlphaY = ang_res_y / 180.0 * M_PI;
 extern const int edgeFeatureNum = 2;
 extern const int surfFeatureNum = 4;
 extern const int sectionsTotal = 6;
-extern const float edgeThreshold = 0.1;
+extern const float edgeThreshold = 0.1; //curvature threshold
 extern const float surfThreshold = 0.1;
-extern const float nearestFeatureSearchSqDist = 25;
+extern const float nearestFeatureSearchSqDist = 15;
 
 
 // Mapping Params
@@ -153,15 +167,17 @@ struct by_value{
 struct PointXYZIR
 {
     PCL_ADD_POINT4D
-    PCL_ADD_INTENSITY;
-    uint16_t ring;
+    //PCL_ADD_INTENSITY;
+    std::uint16_t intensity;
+    std::uint16_t ring;
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 } EIGEN_ALIGN16;
 
+
 POINT_CLOUD_REGISTER_POINT_STRUCT (PointXYZIR,  
                                    (float, x, x) (float, y, y)
-                                   (float, z, z) (float, intensity, intensity)
-                                   (uint16_t, ring, ring)
+                                   (float, z, z) (std::uint16_t, intensity, intensity)
+                                   (std::uint16_t, ring, ring)
 )
 
 /*
