@@ -70,6 +70,7 @@ private:
     ros::Publisher pubIcpKeyFrames;
     ros::Publisher pubRecentKeyFrames;
     ros::Publisher pubRegisteredCloud;
+    ros::Publisher pubCornerPointsMap;
 
     ros::Subscriber subLaserCloudCornerLast;
     ros::Subscriber subLaserCloudSurfLast;
@@ -234,6 +235,7 @@ public:
         pubKeyPoses = nh.advertise<sensor_msgs::PointCloud2>("/key_pose_origin", 2);
         pubLaserCloudSurround = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_surround", 2);
         pubOdomAftMapped = nh.advertise<nav_msgs::Odometry> ("/aft_mapped_to_init", 5);
+        pubCornerPointsMap = nh.advertise<sensor_msgs::PointCloud2> ("/corner_points_map", 2);
 
         subLaserCloudCornerLast = nh.subscribe<sensor_msgs::PointCloud2>("/laser_cloud_corner_last", 2, &mapOptimization::laserCloudCornerLastHandler, this);
         subLaserCloudSurfLast = nh.subscribe<sensor_msgs::PointCloud2>("/laser_cloud_surf_last", 2, &mapOptimization::laserCloudSurfLastHandler, this);
@@ -869,9 +871,9 @@ public:
             cloudMsgTemp.header.frame_id = "camera_init";
             pubHistoryKeyFrames.publish(cloudMsgTemp);
         }
-
-        return true;
         printf("loop detected");
+        return true;
+        
     }
 
 
@@ -1166,7 +1168,7 @@ public:
 
                     float ld2 = a012 / l12;
 
-                    float s = 1 - 1.8 * fabs(ld2);
+                    float s = 1 - 3.6 * fabs(ld2);
 
                     coeff.x = s * la;
                     coeff.y = s * lb;
@@ -1174,6 +1176,7 @@ public:
                     coeff.intensity = s * ld2;
 
                     if (s > 0.1) {
+                        pointOri.intensity = ld2;
                         laserCloudOri->push_back(pointOri);
                         coeffSel->push_back(coeff);
                     }
@@ -1218,7 +1221,7 @@ public:
                 if (planeValid) {
                     float pd2 = pa * pointSel.x + pb * pointSel.y + pc * pointSel.z + pd;
 
-                    float s = 1 - 1.8 * fabs(pd2) / sqrt(sqrt(pointSel.x * pointSel.x //0
+                    float s = 1 - 3.6 * fabs(pd2) / sqrt(sqrt(pointSel.x * pointSel.x //0
                             + pointSel.y * pointSel.y + pointSel.z * pointSel.z));
 
                     coeff.x = s * pa;
@@ -1227,6 +1230,7 @@ public:
                     coeff.intensity = s * pd2;
 
                     if (s > 0.1) {
+                        pointOri.intensity = pd2;
                         laserCloudOri->push_back(pointOri);
                         coeffSel->push_back(coeff);
                     }
@@ -1242,12 +1246,12 @@ public:
         float cry = cos(transformTobeMapped[1]);
         float srz = sin(transformTobeMapped[2]);
         float crz = cos(transformTobeMapped[2]);
-
+        
         int laserCloudSelNum = laserCloudOri->points.size();
+        printf("Opt cloud size: %d \n", laserCloudSelNum);
         if (laserCloudSelNum < 50) {
             return false;
         }
-
         cv::Mat matA(laserCloudSelNum, 6, CV_32F, cv::Scalar::all(0));
         cv::Mat matAt(6, laserCloudSelNum, CV_32F, cv::Scalar::all(0));
         cv::Mat matAtA(6, 6, CV_32F, cv::Scalar::all(0));
@@ -1336,6 +1340,7 @@ public:
     }
 
     void scan2MapOptimization(){
+        sensor_msgs::PointCloud2 cloudMsgTemp;
 
         if (laserCloudCornerFromMapDSNum > 10 && laserCloudSurfFromMapDSNum > 100) {
 
@@ -1345,9 +1350,17 @@ public:
             for (int iterCount = 0; iterCount < 10; iterCount++) {
 
                 laserCloudOri->clear(); // cloud containing the points to be used for optimization
+
+                // PUBLISH FEATURES USED IN MAPPING
                 coeffSel->clear();
 
                 cornerOptimization(iterCount); // find new points
+
+                pcl::toROSMsg(*laserCloudOri, cloudMsgTemp);
+                cloudMsgTemp.header.stamp = ros::Time().fromSec(timeLaserOdometry);
+                cloudMsgTemp.header.frame_id = "camera";
+                pubCornerPointsMap.publish(cloudMsgTemp);
+
                 surfOptimization(iterCount);
 
                 if (LMOptimization(iterCount) == true)

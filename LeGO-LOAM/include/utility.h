@@ -13,8 +13,6 @@
 
 #include "cloud_msgs/cloud_info.h"
 
-
-
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl_ros/point_cloud.h>
@@ -62,7 +60,7 @@ extern const string imuTopic = "/imu/data";
 extern const string fileDirectory = "/tmp/";
 
 // Using velodyne cloud "ring" channel for image projection (other lidar may have different name for this channel, change "PointXYZIR" below)
-extern const bool useCloudRing = false;// if true, ang_res_y and ang_bottom are not used
+extern const bool useCloudRing = true;// if true, ang_res_y and ang_bottom are not used
 
 // VLP-16
 /*
@@ -122,7 +120,7 @@ extern const float scanPeriod = 0.05; // 20 Hz?
 extern const int systemDelay = 0;
 extern const int imuQueLength = 200;
 
-extern const float sensorMinimumRange = 5; // 1m
+extern const float sensorMinimumRange = 1; // 1m
 extern const float sensorMountAngle = 0.0;
 extern const float segmentTheta = 60.0/180.0*M_PI; // decrese this value may improve accuracy?? The larger the better
 extern const int segmentValidPointNum = 5;
@@ -136,7 +134,7 @@ extern const int surfFeatureNum = 4;
 extern const int sectionsTotal = 6;
 extern const float edgeThreshold = 0.1; //curvature threshold
 extern const float surfThreshold = 0.1;
-extern const float nearestFeatureSearchSqDist = 15;
+extern const float nearestFeatureSearchSqDist = 10;
 
 
 // Mapping Params
@@ -202,5 +200,32 @@ POINT_CLOUD_REGISTER_POINT_STRUCT (PointXYZIRPYT,
 )
 
 typedef PointXYZIRPYT  PointTypePose;
+
+struct EIGEN_ALIGN16 OusterPoint {
+    PCL_ADD_POINT4D;
+    float intensity;
+    uint32_t t;
+    uint16_t reflectivity;
+    uint8_t ring;
+    uint16_t ambient;
+    uint32_t range;
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+};
+
+// clang-format off
+POINT_CLOUD_REGISTER_POINT_STRUCT(OusterPoint,
+    (float, x, x)
+    (float, y, y)
+    (float, z, z)
+    (float, intensity, intensity)
+    // use std::uint32_t to avoid conflicting with pcl::uint32_t
+    (std::uint32_t, t, t)
+    (std::uint16_t, reflectivity, reflectivity)
+    (std::uint8_t, ring, ring)
+    (std::uint16_t, ambient, ambient)
+    (std::uint32_t, range, range)
+)
+
+typedef OusterPoint OusterPoint;
 
 #endif

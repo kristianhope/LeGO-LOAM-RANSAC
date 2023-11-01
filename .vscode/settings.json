@@ -7,5 +7,14 @@
         "/home/kristian/catkin_ws/devel/lib/python3/dist-packages",
         "/opt/ros/noetic/lib/python3/dist-packages"
     ],
-    "cmake.sourceDirectory": "/home/kristian/catkin_ws/src/LeGO-LOAM-RANSAC/LeGO-LOAM"
+    "cmake.sourceDirectory": "/home/kristian/catkin_ws/src/LeGO-LOAM-RANSAC/LeGO-LOAM",
+    "files.associations": {
+        "cmath": "cpp",
+        "vector": "cpp",
+        "deque": "cpp",
+        "*.ipp": "cpp",
+        "random": "cpp",
+        "array": "cpp",
+        "string_view": "cpp"
+    }
 }
