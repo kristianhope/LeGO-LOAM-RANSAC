@@ -85,6 +85,8 @@ private:
     ros::Publisher pubSurfPointsFlat;
     ros::Publisher pubSurfPointsLessFlat;
     ros::Publisher pubCornerPointsOdom;
+    ros::Publisher pubTriPod1;
+    ros::Publisher pubTriPod2;
     ros::Publisher pubSurfPointsOdom;
     ros::Publisher pubInlierCloud;
     ros::Publisher pubOutlierCloud;
@@ -262,6 +264,8 @@ public:
         pubSurfPointsFlat = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_flat", 1);
         pubSurfPointsLessFlat = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_less_flat", 1);
         pubCornerPointsOdom = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_corner_odom", 1);
+        pubTriPod1 = nh.advertise<sensor_msgs::PointCloud2>("/tripod1", 1);
+        pubTriPod2 = nh.advertise<sensor_msgs::PointCloud2>("/tripod2", 1);
         pubSurfPointsOdom = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_surf_odom", 1);
         pubInlierCloud = nh.advertise<sensor_msgs::PointCloud2>("/inlier_cloud_odom", 1);
         pubOutlierCloud = nh.advertise<sensor_msgs::PointCloud2>("/outlier_cloud_odom", 1);
@@ -1506,7 +1510,7 @@ void findCorrespondingCornerFeatures(int iterCount){
 
                 float s = 1;
                 if (iterCount >= 7) {
-                    s = 1 - 3.0 * fabs(ld2); // Only keep points with small p2l distances, small p2l --> s close to 1
+                    s = 1 - 3.6 * fabs(ld2); // Only keep points with small p2l distances, small p2l --> s close to 1
                 } // If ld2 = 0.5 --> s = 1 - 0.9 = 0.1
                 // Reduce to 0.25 since 20 Hz
                 // factor 1.8 --> 3.6
@@ -1742,7 +1746,7 @@ void findCorrespondingCornerFeatures(int iterCount){
         }
         int inlierSetSize = largestInlierSet->points.size();
 
-        if (iterCount % 20 == 0){
+        if (iterCount>0 && iterCount % 20 == 0){
         printf("%f\n",factor);
         printf("Iter: %d \n", iterCount);
         printf("Inliers : %d/%d \n", inlierSetSize,pointSelNum);
@@ -1940,10 +1944,23 @@ void findCorrespondingCornerFeatures(int iterCount){
                 break;
         }
 
+        printf("x: %f\ny: %f\nz: %f\n", transformCur[3], transformCur[4], transformCur[5]);
+        printf("xy: %f\n", sqrt(pow(transformCur[3],2) + pow(transformCur[5],2)));
+
         pcl::toROSMsg(*laserCloudOri, laserCloudOutMsg);
 	    laserCloudOutMsg.header.stamp = cloudHeader.stamp;
 	    laserCloudOutMsg.header.frame_id = "camera";
 	    pubCornerPointsOdom.publish(laserCloudOutMsg);
+
+        pcl::toROSMsg(*tripod1Cloud, laserCloudOutMsg);
+	    laserCloudOutMsg.header.stamp = cloudHeader.stamp;
+	    laserCloudOutMsg.header.frame_id = "camera";
+	    pubTriPod1.publish(laserCloudOutMsg);
+
+        pcl::toROSMsg(*tripod2Cloud, laserCloudOutMsg);
+	    laserCloudOutMsg.header.stamp = cloudHeader.stamp;
+	    laserCloudOutMsg.header.frame_id = "camera";
+	    pubTriPod2.publish(laserCloudOutMsg);
 
         // Update MA
         float bufferSizePrev = transformCurBuffer.size();

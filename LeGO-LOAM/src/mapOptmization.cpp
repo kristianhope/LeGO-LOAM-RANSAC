@@ -494,7 +494,7 @@ public:
 		  }
 
 		for (int i = 0; i < 6; i++) {
-		    transformBefMapped[i] = transformSum[i];
+		    transformBefMapped[i] = transformSum[i]; // Set init value to value from odometry
 		    transformAftMapped[i] = transformTobeMapped[i];
 		}
     }
@@ -1113,8 +1113,10 @@ public:
                     cy += laserCloudCornerFromMapDS->points[pointSearchInd[j]].y;
                     cz += laserCloudCornerFromMapDS->points[pointSearchInd[j]].z;
                 }
+                // calculate mean in all directions
                 cx /= 5; cy /= 5;  cz /= 5;
 
+                // calculate A matrix
                 float a11 = 0, a12 = 0, a13 = 0, a22 = 0, a23 = 0, a33 = 0;
                 //calculate covariance
                 for (int j = 0; j < 5; j++) {
@@ -1141,13 +1143,14 @@ public:
                     float x0 = pointSel.x;
                     float y0 = pointSel.y;
                     float z0 = pointSel.z;
-                    float x1 = cx + 0.1 * matV1.at<float>(0, 0);
+                    float x1 = cx + 0.1 * matV1.at<float>(0, 0); //select points two points 0.1 m each direction of center on line
                     float y1 = cy + 0.1 * matV1.at<float>(0, 1);
                     float z1 = cz + 0.1 * matV1.at<float>(0, 2);
                     float x2 = cx - 0.1 * matV1.at<float>(0, 0);
                     float y2 = cy - 0.1 * matV1.at<float>(0, 1);
                     float z2 = cz - 0.1 * matV1.at<float>(0, 2);
-
+                    
+                    // x-product
                     float a012 = sqrt(((x0 - x1)*(y0 - y2) - (x0 - x2)*(y0 - y1))
                                     * ((x0 - x1)*(y0 - y2) - (x0 - x2)*(y0 - y1)) 
                                     + ((x0 - x1)*(z0 - z2) - (x0 - x2)*(z0 - z1))
@@ -1186,10 +1189,10 @@ public:
     }
 
     void surfOptimization(int iterCount){
-        updatePointAssociateToMapSinCos();
+        updatePointAssociateToMapSinCos(); // update sin and cos
         for (int i = 0; i < laserCloudSurfTotalLastDSNum; i++) {
             pointOri = laserCloudSurfTotalLastDS->points[i];
-            pointAssociateToMap(&pointOri, &pointSel); 
+            pointAssociateToMap(&pointOri, &pointSel); // convert to global coordinates
             kdtreeSurfFromMap->nearestKSearch(pointSel, 5, pointSearchInd, pointSearchSqDis);
 
             if (pointSearchSqDis[4] < 1.0) {
@@ -1248,7 +1251,7 @@ public:
         float crz = cos(transformTobeMapped[2]);
         
         int laserCloudSelNum = laserCloudOri->points.size();
-        printf("Opt cloud size: %d \n", laserCloudSelNum);
+        //printf("Opt cloud size: %d \n", laserCloudSelNum);
         if (laserCloudSelNum < 50) {
             return false;
         }
@@ -1351,11 +1354,11 @@ public:
 
                 laserCloudOri->clear(); // cloud containing the points to be used for optimization
 
-                // PUBLISH FEATURES USED IN MAPPING
+                
                 coeffSel->clear();
 
                 cornerOptimization(iterCount); // find new points
-
+                // PUBLISH FEATURES USED IN MAPPING
                 pcl::toROSMsg(*laserCloudOri, cloudMsgTemp);
                 cloudMsgTemp.header.stamp = ros::Time().fromSec(timeLaserOdometry);
                 cloudMsgTemp.header.frame_id = "camera";
