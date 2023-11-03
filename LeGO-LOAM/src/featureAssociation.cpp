@@ -861,8 +861,8 @@ public:
                     int ind = cloudSmoothness[k].ind;
                     // if eligble ground point
                     if (cloudNeighborPicked[ind] == 0 && // not picked, or neighbors not picked
-                        cloudCurvature[ind] < surfThreshold // curvature low
-                        && segInfo.segmentedCloudGroundFlag[ind] == true
+                        cloudCurvature[ind] < surfThreshold &&
+                        segInfo.segmentedCloudGroundFlag[ind] == true // curvature low
                         ) {  // is ground point, hmmm....
 
                         cloudLabel[ind] = -1;
@@ -1395,7 +1395,7 @@ public:
         float deltaT = sqrt(
                             pow(matX.at<float>(2, 0) * 100, 2));
 
-        if (deltaR < 0.1 && deltaT < 0.1) {
+        if (deltaR < 0.05 && deltaT < 0.05) {
             return false;
         }
         return true;
@@ -1899,7 +1899,7 @@ void findCorrespondingCornerFeatures(int iterCount){
         sensor_msgs::PointCloud2 laserCloudOutMsg;
         if (laserCloudCornerLastNum < 10 || laserCloudSurfLastNum < 100) // SJEKKE FORSKJELL I FEATURES
             return;
-
+        /*
         for (int iterCount1 = 0; iterCount1 < 25; iterCount1++) { // 25 iterations
             laserCloudOri->clear();
             tripod1Cloud->clear();
@@ -1913,11 +1913,11 @@ void findCorrespondingCornerFeatures(int iterCount){
                 continue;
             }
             else {
-                printf("enough surf features");
+                printf("enough surf features: %d\n",laserCloudOri->points.size());
             }
             if (calculateTransformationSurf(iterCount1) == false)
                 break;
-        }   
+        }*/   
         
         pcl::toROSMsg(*laserCloudOri, laserCloudOutMsg);
 	    laserCloudOutMsg.header.stamp = cloudHeader.stamp;
@@ -1925,14 +1925,15 @@ void findCorrespondingCornerFeatures(int iterCount){
 	    pubSurfPointsOdom.publish(laserCloudOutMsg);
 
 
-        for (int iterCount2 = 0; iterCount2 < 25; iterCount2++) {
+        for (int iterCount2 = 0; iterCount2 < 50; iterCount2++) {
             laserCloudOri->clear();
             tripod1Cloud->clear();
             tripod2Cloud->clear();
             coeffSel->clear();
-
             largestInlierSet->clear();
             largestInlierSetCoeffs->clear();
+
+            //findCorrespondingSurfFeatures(iterCount2);
 
             findCorrespondingCornerFeatures(iterCount2);
             
