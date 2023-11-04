@@ -21,7 +21,7 @@ Panels:
   - Class: rviz/Time
     Name: Time
     SyncMode: 0
-    SyncSource: Velodyne
+    SyncSource: Surf Odom
   - Class: rviz/Help
     Name: Help
 Preferences:
@@ -500,8 +500,8 @@ Visualization Manager:
     - Alpha: 0.5
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 22.521381378173828
-        Min Value: -10.047517776489258
+        Max Value: 22.972442626953125
+        Min Value: -5.159974575042725
         Value: true
       Axis: Y
       Channel Name: intensity
@@ -661,7 +661,7 @@ Visualization Manager:
       Buffer Length: 1
       Class: rviz/Path
       Color: 173; 127; 168
-      Enabled: true
+      Enabled: false
       Head Diameter: 0.30000001192092896
       Head Length: 0.20000000298023224
       Length: 0.30000001192092896
@@ -680,7 +680,7 @@ Visualization Manager:
       Shaft Length: 0.10000000149011612
       Topic: /GNSS_path
       Unreliable: false
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -741,9 +741,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.5747960805892944
+      Pitch: 0.5147961378097534
       Target Frame: base_link
-      Yaw: 0.4560198485851288
+      Yaw: 1.6160188913345337
     Saved: ~
 Window Geometry:
   Displays:
