@@ -756,8 +756,7 @@ public:
                     int ind = cloudSmoothness[k].ind;
                     // check if point is valid to be picked as edge
                     if (cloudNeighborPicked[ind] == 0 &&
-                        cloudCurvature[ind] > edgeThreshold &&
-                        segInfo.segmentedCloudGroundFlag[ind] == false) { // is not ground point
+                        cloudCurvature[ind] > edgeThreshold) { // is not ground point
                     
                         largestPickedNum++;
                         if (largestPickedNum <= 2) { // Only pick the 2 sharpest features
@@ -794,7 +793,7 @@ public:
                     // if eligble ground point
                     if (cloudNeighborPicked[ind] == 0 && // not picked, or neighbors not picked
                         cloudCurvature[ind] < surfThreshold // curvature low
-                        && segInfo.segmentedCloudGroundFlag[ind] == true) {  // is ground point, hmmm....
+                        ) {  // is ground point, hmmm....
 
                         cloudLabel[ind] = -1;
                         surfPointsFlat->push_back(segmentedCloud->points[ind]);
@@ -1183,7 +1182,7 @@ public:
                 float ld2 = a012 / l12; // point to line distance
 
                 float s = 1;
-                if (iterCount >= 2) {
+                if (iterCount >= 5) {
                     s = 1 - 3.6 * fabs(ld2); // Only keep points with small p2l distances, small p2l --> s close to 1
                 } // If ld2 = 0.5 --> s = 1 - 0.9 = 0.1
                 // Reduce to 0.25 since 20 Hz
@@ -1299,7 +1298,7 @@ public:
                 float pd2 = pa * pointSel.x + pb * pointSel.y + pc * pointSel.z + pd;
 
                 float s = 1;
-                if (iterCount >= 2) {
+                if (iterCount >= 5) {
                     s = 1 - 3.6 * fabs(pd2) / sqrt(sqrt(pointSel.x * pointSel.x
                             + pointSel.y * pointSel.y + pointSel.z * pointSel.z));
                 }
@@ -1646,7 +1645,7 @@ public:
                             pow(matX.at<float>(4, 0) * 100, 2) +
                             pow(matX.at<float>(5, 0) * 100, 2));
 
-        if (deltaR < 0.1 && deltaT < 0.1) {
+        if (deltaR < 0.01 && deltaT < 0.01) {
             return false;
         }
         return true;
@@ -1718,7 +1717,7 @@ public:
 
         if (laserCloudCornerLastNum < 10 || laserCloudSurfLastNum < 100)
             return;
-
+        /*
         for (int iterCount1 = 0; iterCount1 < 25; iterCount1++) { // 25 iterations
             laserCloudOri->clear();
             coeffSel->clear();
@@ -1729,7 +1728,7 @@ public:
                 continue;
             if (calculateTransformationSurf(iterCount1) == false)
                 break;
-        }
+        }*/
 
         pcl::toROSMsg(*laserCloudOri, laserCloudOutMsg);
 	    laserCloudOutMsg.header.stamp = cloudHeader.stamp;
@@ -1743,10 +1742,13 @@ public:
             coeffSel->clear();
 
             findCorrespondingCornerFeatures(iterCount2);
+            findCorrespondingSurfFeatures(iterCount2);
 
-            if (laserCloudOri->points.size() < 10) // too few features
+            printf("%d\n",laserCloudOri->points.size());
+
+            if (laserCloudOri->points.size() < 20) // too few features
                 continue;
-            if (calculateTransformationCorner(iterCount2) == false)
+            if (calculateTransformation(iterCount2) == false)
                 break;
         }
         

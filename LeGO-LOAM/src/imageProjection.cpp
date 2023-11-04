@@ -190,6 +190,7 @@ public:
         projectPointCloud();
         // 4. Mark ground points
         groundRemoval();
+        //printf("%d\n",groundCloud->points.size());
         // 5. Point cloud segmentation
         cloudSegmentation();
         // 6. Publish all clouds
@@ -441,7 +442,7 @@ public:
 
         // check if this segment is valid
         bool feasibleSegment = false;
-        if (allPushedIndSize >= 30) // if we find a cluster with more than 30 points
+        if (allPushedIndSize >= 40) // if we find a cluster with more than 30 points
             feasibleSegment = true;
         else if (allPushedIndSize >= segmentValidPointNum){
             int lineCount = 0;
