@@ -1353,8 +1353,6 @@ public:
             for (int iterCount = 0; iterCount < 10; iterCount++) {
 
                 laserCloudOri->clear(); // cloud containing the points to be used for optimization
-
-                
                 coeffSel->clear();
 
                 cornerOptimization(iterCount); // find new points
@@ -1559,7 +1557,7 @@ int main(int argc, char** argv)
     std::thread loopthread(&mapOptimization::loopClosureThread, &MO);
     std::thread visualizeMapThread(&mapOptimization::visualizeGlobalMapThread, &MO);
 
-    ros::Rate rate(200);
+    ros::Rate rate(300);
     while (ros::ok())
     {
         ros::spinOnce();
