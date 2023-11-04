@@ -62,7 +62,7 @@ extern const string imuTopic = "/imu/data";
 extern const string fileDirectory = "/tmp/";
 
 // Using velodyne cloud "ring" channel for image projection (other lidar may have different name for this channel, change "PointXYZIR" below)
-extern const bool useCloudRing = false;// if true, ang_res_y and ang_bottom are not used
+extern const bool useCloudRing = true;// if true, ang_res_y and ang_bottom are not used
 
 // VLP-16
 /*
@@ -202,5 +202,33 @@ POINT_CLOUD_REGISTER_POINT_STRUCT (PointXYZIRPYT,
 )
 
 typedef PointXYZIRPYT  PointTypePose;
+
+struct EIGEN_ALIGN16 OusterPoint {
+    PCL_ADD_POINT4D;
+    float intensity;
+    uint32_t t;
+    uint16_t reflectivity;
+    uint8_t ring;
+    uint16_t ambient;
+    uint32_t range;
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+};
+
+// clang-format off
+POINT_CLOUD_REGISTER_POINT_STRUCT(OusterPoint,
+    (float, x, x)
+    (float, y, y)
+    (float, z, z)
+    (float, intensity, intensity)
+    // use std::uint32_t to avoid conflicting with pcl::uint32_t
+    (std::uint32_t, t, t)
+    (std::uint16_t, reflectivity, reflectivity)
+    (std::uint8_t, ring, ring)
+    (std::uint16_t, ambient, ambient)
+    (std::uint32_t, range, range)
+)
+
+typedef OusterPoint OusterPoint;
+
 
 #endif

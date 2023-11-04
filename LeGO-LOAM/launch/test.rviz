@@ -5,6 +5,8 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
+        - /TF1
+        - /Raw Lidar1
       Splitter Ratio: 0.7039999961853027
     Tree Height: 797
   - Class: rviz/Selection
@@ -57,7 +59,7 @@ Visualization Manager:
         eocam_starboard:
           Value: false
         ground_truth:
-          Value: true
+          Value: false
         ircam_port:
           Value: false
         ircam_starboard:
@@ -500,8 +502,8 @@ Visualization Manager:
     - Alpha: 0.5
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 22.972442626953125
-        Min Value: -5.159974575042725
+        Max Value: 23.844661712646484
+        Min Value: -6.5221848487854
         Value: true
       Axis: Y
       Channel Name: intensity
@@ -709,6 +711,15 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: false
+    - Alpha: 1
+      Class: rviz/Axes
+      Enabled: true
+      Length: 1
+      Name: Axes
+      Radius: 0.10000000149011612
+      Reference Frame: laser_odom
+      Show Trail: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 0; 0; 0
@@ -725,7 +736,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 56.45839309692383
+      Distance: 26.21950912475586
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -741,9 +752,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.5147961378097534
+      Pitch: 0.4247961938381195
       Target Frame: base_link
-      Yaw: 1.6160188913345337
+      Yaw: 0.5360174179077148
     Saved: ~
 Window Geometry:
   Displays:
