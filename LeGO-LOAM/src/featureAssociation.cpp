@@ -1603,7 +1603,7 @@ void findCorrespondingCornerFeatures(int iterCount){
         float sampleTransform[6];
         vector<float> bestP2l;
 
-        for (int i = 0; i < 1500; i++){
+        for (int i = 0; i < 1000; i++){
             // Reset sample transform
             for (int p = 0; p < 6; p++) {
                 sampleTransform[p] = transformCur[p];
@@ -1679,7 +1679,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                 float atz = b7 * coeff.x - srx * coeff.y - b3 * coeff.z;
 
                 float d2 = coeff.intensity;
-
+                
                 matA.at<float>(i, 0) = arx;
                 matA.at<float>(i, 1) = ary;
                 matA.at<float>(i, 2) = arz;
