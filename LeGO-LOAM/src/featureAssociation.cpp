@@ -1295,7 +1295,7 @@ public:
                 float pd2 = pa * pointSel.x + pb * pointSel.y + pc * pointSel.z + pd;
 
                 float s = 1;
-                if (iterCount >= 2) {
+                if (iterCount >= 5) {
                     s = 1 - 3.6 * fabs(pd2) / sqrt(sqrt(pointSel.x * pointSel.x
                             + pointSel.y * pointSel.y + pointSel.z * pointSel.z));
                 }
@@ -1535,7 +1535,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                 float ld2 = a012 / l12; // point to line distance
 
                 float s = 1;
-                if (iterCount >= 7) {
+                if (iterCount >= 5) {
                     s = 1 - 3.6 * fabs(ld2); // Only keep points with small p2l distances, small p2l --> s close to 1
                 } // If ld2 = 0.5 --> s = 1 - 0.9 = 0.1
                 // Reduce to 0.25 since 20 Hz
@@ -1579,23 +1579,31 @@ void findCorrespondingCornerFeatures(int iterCount){
         largestInlierSetCoeffs.reset(new pcl::PointCloud<PointType>());
         smallestOutlierSet.reset(new pcl::PointCloud<PointType>());
 
-        double iterCountFactor = 0.05+ (0.25 - 0.05) * (25 - iterCount) / 25.0;
-        double numPointsFactor = 0.25 - (0.25 - 0.05) * (pointSelNum - 10) / 500;
-        if (numPointsFactor < 0.05) {
-            numPointsFactor = 0.05;
+        double iterCountFactorCorner = 0.05+ (0.5 - 0.05) * (25 - iterCount) / 25.0;
+        double numPointsFactorCorner = 0.5 - (0.5 - 0.1) * (cornerCorrespondences - 10) / 300;
+        if (numPointsFactorCorner < 0.05) {
+            numPointsFactorCorner = 0.05;
         }
-        //double yawFactor = 0.1 + (1.5-0.1) * (abs(transformCur[1])) / 0.04;
+        
+        double iterCountFactorSurf = 0.005 + (0.05 - 0.005) * (25 - iterCount) / 25.0;
+        double numPointsFactorSurf = 0.05 - (0.05 - 0.005) * (surfCorrespondences - 10) / 350;
+        double cornerSurfDiffFactor = 0.005 + (0.05 - 0.005) * (200 - abs(surfCorrespondences-cornerCorrespondences))/200;
+        if (numPointsFactorSurf < 0.005) {
+            numPointsFactorSurf = 0.005;
+        }
 
         // Combine the two factors using some weighting, e.g., taking the average
-        double factor = 0.4*iterCountFactor + 0.6*numPointsFactor ;
+        double cornerFactor = 0.4*iterCountFactorCorner + 0.6*numPointsFactorCorner;
+        double surfFactor = 0.5*iterCountFactorSurf + 0.25*numPointsFactorSurf + 0.25 * cornerSurfDiffFactor;
         //double factor = 0.5;
 
         int largestInlierCount = 0;
-        float inlierLimit = factor;
+        int largestCornerInlierCount = 0;
+        int largestSurfInlierCount = 0;
         float sampleTransform[6];
         vector<float> bestP2l;
 
-        for (int i = 0; i < 1000; i++){
+        for (int i = 0; i < 1500; i++){
             // Reset sample transform
             for (int p = 0; p < 6; p++) {
                 sampleTransform[p] = transformCur[p];
@@ -1730,6 +1738,8 @@ void findCorrespondingCornerFeatures(int iterCount){
             }
             // Inlier check
             int inlierCount = 0;
+            int cornerInlierCount = 0;
+            int surfInlierCount = 0;
             pcl::PointCloud<PointType> inlierCloud;
             pcl::PointCloud<PointType> inlierCoeff;
             pcl::PointCloud<PointType> outlierCloud;
@@ -1769,8 +1779,11 @@ void findCorrespondingCornerFeatures(int iterCount){
                 tripod2 = tripod2Cloud->points[k];
                 tripod3 = tripod3Cloud->points[k];
                 float pl2 = pointToPlaneDist(transformedPoint, tripod1, tripod2, tripod3);
-                if (pl2 < inlierLimit) {
-                    inlierCount += 1;
+                //printf("%f\n",pl2);
+                //printf("pl2: %f\n",pl2);
+                if (abs(pl2) < surfFactor) {
+                    
+                    surfInlierCount += 1;
                     inlierCloud.push_back(point);
                     inlierCoeff.push_back(coeff);
                 }
@@ -1814,9 +1827,10 @@ void findCorrespondingCornerFeatures(int iterCount){
                 tripod1 = tripod1Cloud->points[k];
                 tripod2 = tripod2Cloud->points[k];
                 float ld2 = pointToLineDist(transformedPoint, tripod1, tripod2);
+                //printf("ld2: %f\n",ld2);
                 p2l.push_back(ld2);
-                if (ld2 < inlierLimit) {
-                    inlierCount += 1;
+                if (abs(ld2) < cornerFactor) {
+                    cornerInlierCount += 1;
                     inlierCloud.push_back(point);
                     inlierCoeff.push_back(coeff);
                 }
@@ -1825,12 +1839,15 @@ void findCorrespondingCornerFeatures(int iterCount){
                 }
 
             }
+            inlierCount = surfInlierCount + cornerInlierCount;
             // If new best inlier count
             if (inlierCount > largestInlierCount) {
                 largestInlierSet.reset(new pcl::PointCloud<PointType>(inlierCloud)); 
                 largestInlierSetCoeffs.reset(new pcl::PointCloud<PointType>(inlierCoeff));
                 smallestOutlierSet.reset(new pcl::PointCloud<PointType>(outlierCloud));
                 largestInlierCount = inlierCount;
+                largestCornerInlierCount = cornerInlierCount;
+                largestSurfInlierCount = surfInlierCount;
                 bestP2l = p2l;
             }
 
@@ -1838,8 +1855,11 @@ void findCorrespondingCornerFeatures(int iterCount){
         int inlierSetSize = largestInlierSet->points.size();
 
         if (iterCount>0 && iterCount % 20 == 0){
-        printf("%f\n",factor);
+        printf("Surf limit: %f\n",surfFactor);
+        printf("Corner limit: %f\n",cornerFactor);
         printf("Iter: %d \n", iterCount);
+        printf("Corner inliers: %d\n",largestCornerInlierCount);
+        printf("Surf inliers: %d\n",largestSurfInlierCount);
         printf("Inliers : %d/%d \n", inlierSetSize,pointSelNum);
 
         if (!bestP2l.empty()) {
@@ -1981,7 +2001,7 @@ void findCorrespondingCornerFeatures(int iterCount){
             transformCur[1] += matX.at<float>(1, 0);
             transformCur[2] += matX.at<float>(2, 0);
             transformCur[3] += matX.at<float>(3, 0);
-            transformCur[4] += matX.at<float>(4, 0);
+            //transformCur[4] += matX.at<float>(4, 0);
             transformCur[5] += matX.at<float>(5, 0);
             
             for(int i=0; i<6; i++){
@@ -2052,14 +2072,14 @@ void findCorrespondingCornerFeatures(int iterCount){
             findCorrespondingSurfFeatures(iterCount2);
 
             surfCorrespondences = laserCloudOri->points.size();
-            printf("surf size: %d\n",surfCorrespondences);
+            //printf("surf size: %d\n",surfCorrespondences);
 
             findCorrespondingCornerFeatures(iterCount2);
 
             cornerCorrespondences = laserCloudOri->points.size() - surfCorrespondences;
-            printf("corner size: %d\n",cornerCorrespondences);
+            //printf("corner size: %d\n",cornerCorrespondences);
             
-            if (laserCloudOri->points.size() < 10){
+            if (laserCloudOri->points.size() < 40){
                 printf("Too few corresponding features");
                 continue;
             }
@@ -2067,8 +2087,8 @@ void findCorrespondingCornerFeatures(int iterCount){
                 break;
         }
 
-        printf("x: %f\ny: %f\nz: %f\n", transformCur[3], transformCur[4], transformCur[5]);
-        printf("xy: %f\n", sqrt(pow(transformCur[3],2) + pow(transformCur[5],2)));
+        //printf("x: %f\ny: %f\nz: %f\n", transformCur[3], transformCur[4], transformCur[5]);
+        //printf("xy: %f\n", sqrt(pow(transformCur[3],2) + pow(transformCur[5],2)));
 
         pcl::toROSMsg(*laserCloudOri, laserCloudOutMsg);
 	    laserCloudOutMsg.header.stamp = cloudHeader.stamp;

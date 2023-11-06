@@ -5,7 +5,7 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /Inliers Odom1
+        - /TF1/Frames1
       Splitter Ratio: 0.7039999961853027
     Tree Height: 797
   - Class: rviz/Selection
@@ -529,8 +529,8 @@ Visualization Manager:
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 23.97142791748047
-        Min Value: -48.71622085571289
+        Max Value: 19.653444290161133
+        Min Value: -34.01480484008789
         Value: true
       Axis: Z
       Channel Name: intensity
@@ -905,7 +905,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 45.34767150878906
+      Distance: 21.5623836517334
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -921,9 +921,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.35979601740837097
+      Pitch: 0.46479707956314087
       Target Frame: base_link
-      Yaw: 0.4165523648262024
+      Yaw: 1.7815436124801636
     Saved: ~
 Window Geometry:
   Displays:
