@@ -1603,7 +1603,7 @@ void findCorrespondingCornerFeatures(int iterCount){
         float sampleTransform[6];
         vector<float> bestP2l;
 
-        for (int i = 0; i < 1000; i++){
+        for (int i = 0; i < 500; i++){
             // Reset sample transform
             for (int p = 0; p < 6; p++) {
                 sampleTransform[p] = transformCur[p];
@@ -1628,12 +1628,12 @@ void findCorrespondingCornerFeatures(int iterCount){
                 ransacCoeffs.push_back(coeffSel->points[index]);
             }
 
-            cv::Mat matA(sampleNum, 6, CV_32F, cv::Scalar::all(0));
-            cv::Mat matAt(6, sampleNum, CV_32F, cv::Scalar::all(0));
-            cv::Mat matAtA(6, 6, CV_32F, cv::Scalar::all(0));
+            cv::Mat matA(sampleNum, 5, CV_32F, cv::Scalar::all(0));
+            cv::Mat matAt(5, sampleNum, CV_32F, cv::Scalar::all(0));
+            cv::Mat matAtA(5, 5, CV_32F, cv::Scalar::all(0));
             cv::Mat matB(sampleNum, 1, CV_32F, cv::Scalar::all(0));
-            cv::Mat matAtB(6, 1, CV_32F, cv::Scalar::all(0));
-            cv::Mat matX(6, 1, CV_32F, cv::Scalar::all(0));
+            cv::Mat matAtB(5, 1, CV_32F, cv::Scalar::all(0));
+            cv::Mat matX(5, 1, CV_32F, cv::Scalar::all(0));
 
             float srx = sin(sampleTransform[0]);
             float crx = cos(sampleTransform[0]);
@@ -1684,8 +1684,8 @@ void findCorrespondingCornerFeatures(int iterCount){
                 matA.at<float>(i, 1) = ary;
                 matA.at<float>(i, 2) = arz;
                 matA.at<float>(i, 3) = atx;
-                matA.at<float>(i, 4) = aty;
-                matA.at<float>(i, 5) = atz;
+                //matA.at<float>(i, 4) = aty;
+                matA.at<float>(i, 4) = atz;
                 matB.at<float>(i, 0) = -0.05 * d2;
             }
 
@@ -1697,18 +1697,18 @@ void findCorrespondingCornerFeatures(int iterCount){
 
             // Degeneracy check
             if (iterCount == 0) {
-                cv::Mat matE(1, 6, CV_32F, cv::Scalar::all(0));
-                cv::Mat matV(6, 6, CV_32F, cv::Scalar::all(0));
-                cv::Mat matV2(6, 6, CV_32F, cv::Scalar::all(0));
+                cv::Mat matE(1, 5, CV_32F, cv::Scalar::all(0));
+                cv::Mat matV(5, 5, CV_32F, cv::Scalar::all(0));
+                cv::Mat matV2(5, 5, CV_32F, cv::Scalar::all(0));
 
                 cv::eigen(matAtA, matE, matV);
                 matV.copyTo(matV2);
 
                 isDegenerate = false;
-                float eignThre[6] = {10, 10, 10, 10, 10, 10};
-                for (int i = 5; i >= 0; i--) {
+                float eignThre[5] = {10, 10, 10, 10, 10};
+                for (int i = 4; i >= 0; i--) {
                     if (matE.at<float>(0, i) < eignThre[i]) {
-                        for (int j = 0; j < 6; j++) {
+                        for (int j = 0; j < 5; j++) {
                             matV2.at<float>(i, j) = 0;
                         }
                         isDegenerate = true;
@@ -1720,7 +1720,7 @@ void findCorrespondingCornerFeatures(int iterCount){
             }
 
             if (isDegenerate) {
-                cv::Mat matX2(6, 1, CV_32F, cv::Scalar::all(0));
+                cv::Mat matX2(5, 1, CV_32F, cv::Scalar::all(0));
                 matX.copyTo(matX2);
                 matX = matP * matX2;
             }
@@ -1729,8 +1729,8 @@ void findCorrespondingCornerFeatures(int iterCount){
             sampleTransform[1] += matX.at<float>(1, 0);
             sampleTransform[2] += matX.at<float>(2, 0);
             sampleTransform[3] += matX.at<float>(3, 0);
-            sampleTransform[4] += matX.at<float>(4, 0);
-            sampleTransform[5] += matX.at<float>(5, 0);
+            //sampleTransform[4] += matX.at<float>(4, 0);
+            sampleTransform[5] += matX.at<float>(4, 0);
 
             for(int i=0; i<6; i++){
                 if(isnan(sampleTransform[i]))
@@ -1745,6 +1745,7 @@ void findCorrespondingCornerFeatures(int iterCount){
             pcl::PointCloud<PointType> outlierCloud;
             vector<float> p2l;
 
+            // Surf inliers
             for (int k = 0; k < surfCorrespondences; k++) {
 
                 PointType point = laserCloudOri->points[k];
@@ -1793,7 +1794,7 @@ void findCorrespondingCornerFeatures(int iterCount){
 
             }
 
-            // Find which points are inliers with this transform
+            // Corner inliers
             for (int k = surfCorrespondences; k < cornerCorrespondences + surfCorrespondences; k++) {
 
                 PointType point = laserCloudOri->points[k];
@@ -1901,12 +1902,12 @@ void findCorrespondingCornerFeatures(int iterCount){
         
         if (inlierSetSize > 0.5 * pointSelNum) {
             // Solve least squares problem with inliers
-            cv::Mat matA(inlierSetSize, 6, CV_32F, cv::Scalar::all(0));
-            cv::Mat matAt(6, inlierSetSize, CV_32F, cv::Scalar::all(0));
-            cv::Mat matAtA(6, 6, CV_32F, cv::Scalar::all(0));
+            cv::Mat matA(inlierSetSize, 5, CV_32F, cv::Scalar::all(0));
+            cv::Mat matAt(5, inlierSetSize, CV_32F, cv::Scalar::all(0));
+            cv::Mat matAtA(5, 5, CV_32F, cv::Scalar::all(0));
             cv::Mat matB(inlierSetSize, 1, CV_32F, cv::Scalar::all(0));
-            cv::Mat matAtB(6, 1, CV_32F, cv::Scalar::all(0));
-            cv::Mat matX(6, 1, CV_32F, cv::Scalar::all(0));
+            cv::Mat matAtB(5, 1, CV_32F, cv::Scalar::all(0));
+            cv::Mat matX(5, 1, CV_32F, cv::Scalar::all(0));
 
             float srx = sin(transformCur[0]);
             float crx = cos(transformCur[0]);
@@ -1956,8 +1957,8 @@ void findCorrespondingCornerFeatures(int iterCount){
                 matA.at<float>(i, 1) = ary;
                 matA.at<float>(i, 2) = arz;
                 matA.at<float>(i, 3) = atx;
-                matA.at<float>(i, 4) = aty;
-                matA.at<float>(i, 5) = atz;
+                //matA.at<float>(i, 4) = aty;
+                matA.at<float>(i, 4) = atz;
                 matB.at<float>(i, 0) = -0.05 * d2;
             }
 
@@ -1969,18 +1970,18 @@ void findCorrespondingCornerFeatures(int iterCount){
 
             // Degeneracy check
             if (iterCount == 0) {
-            cv::Mat matE(1, 6, CV_32F, cv::Scalar::all(0));
-            cv::Mat matV(6, 6, CV_32F, cv::Scalar::all(0));
-            cv::Mat matV2(6, 6, CV_32F, cv::Scalar::all(0));
+            cv::Mat matE(1, 5, CV_32F, cv::Scalar::all(0));
+            cv::Mat matV(5, 5, CV_32F, cv::Scalar::all(0));
+            cv::Mat matV2(5, 5, CV_32F, cv::Scalar::all(0));
 
             cv::eigen(matAtA, matE, matV);
             matV.copyTo(matV2);
 
             isDegenerate = false;
-            float eignThre[6] = {10, 10, 10, 10, 10, 10};
-            for (int i = 5; i >= 0; i--) {
+            float eignThre[5] = {10, 10, 10, 10, 10};
+            for (int i = 4; i >= 0; i--) {
                 if (matE.at<float>(0, i) < eignThre[i]) {
-                    for (int j = 0; j < 6; j++) {
+                    for (int j = 0; j < 5; j++) {
                         matV2.at<float>(i, j) = 0;
                     }
                     isDegenerate = true;
@@ -1992,7 +1993,7 @@ void findCorrespondingCornerFeatures(int iterCount){
             }
 
             if (isDegenerate) {
-                cv::Mat matX2(6, 1, CV_32F, cv::Scalar::all(0));
+                cv::Mat matX2(5, 1, CV_32F, cv::Scalar::all(0));
                 matX.copyTo(matX2);
                 matX = matP * matX2;
             }
@@ -2002,7 +2003,7 @@ void findCorrespondingCornerFeatures(int iterCount){
             transformCur[2] += matX.at<float>(2, 0);
             transformCur[3] += matX.at<float>(3, 0);
             //transformCur[4] += matX.at<float>(4, 0);
-            transformCur[5] += matX.at<float>(5, 0);
+            transformCur[5] += matX.at<float>(4, 0);
             
             for(int i=0; i<6; i++){
                 if(isnan(transformCur[i]))
@@ -2016,8 +2017,7 @@ void findCorrespondingCornerFeatures(int iterCount){
 
             float deltaT = sqrt(
                             pow(matX.at<float>(3, 0) * 100, 2) +
-                            pow(matX.at<float>(4, 0) * 100, 2) +
-                            pow(matX.at<float>(5, 0) * 100, 2));
+                            pow(matX.at<float>(4, 0) * 100, 2));
             //printf("deltaT: %f\ndeltaR: %f\n",deltaT,deltaR);
             if (deltaR < 0.01 && deltaT < 0.01) {
                 printf("Converged\n");
@@ -2059,7 +2059,7 @@ void findCorrespondingCornerFeatures(int iterCount){
 	    pubSurfPointsOdom.publish(laserCloudOutMsg);
 
 
-        for (int iterCount2 = 0; iterCount2 < 30; iterCount2++) {
+        for (int iterCount2 = 0; iterCount2 < 25; iterCount2++) {
             laserCloudOri->clear();
             tripod1Cloud->clear();
             tripod2Cloud->clear();
@@ -2079,7 +2079,7 @@ void findCorrespondingCornerFeatures(int iterCount){
             cornerCorrespondences = laserCloudOri->points.size() - surfCorrespondences;
             //printf("corner size: %d\n",cornerCorrespondences);
             
-            if (laserCloudOri->points.size() < 40){
+            if (laserCloudOri->points.size() < 30){
                 printf("Too few corresponding features");
                 continue;
             }

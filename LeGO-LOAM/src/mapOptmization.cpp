@@ -178,6 +178,9 @@ private:
     float transformBefMapped[6];
     float transformAftMapped[6];
 
+    float z_tolerance = 0.05;
+    float rotation_tolerance = 0.1;
+
 
     int imuPointerFront;
     int imuPointerLast;
@@ -497,6 +500,23 @@ public:
 		    transformBefMapped[i] = transformSum[i]; // Set init value to value from odometry
 		    transformAftMapped[i] = transformTobeMapped[i];
 		}
+                // pitch
+        if (transformAftMapped[0] < -rotation_tolerance)
+            {transformAftMapped[0] = -rotation_tolerance;}
+        if (transformAftMapped[0] > rotation_tolerance)
+            {transformAftMapped[0] = rotation_tolerance;}
+        // roll
+        if (transformAftMapped[2] < -rotation_tolerance)
+            {transformAftMapped[2] = -rotation_tolerance;}
+        if (transformAftMapped[2] > rotation_tolerance)
+            {transformAftMapped[2] = rotation_tolerance;}
+        // z
+        if (transformAftMapped[4] < -z_tolerance)
+            {transformAftMapped[4] = -z_tolerance;
+            printf("hey");}
+        if (transformAftMapped[4] > z_tolerance)
+            {transformAftMapped[4] = z_tolerance; printf("hey2");
+                }
     }
 
     void updatePointAssociateToMapSinCos(){
@@ -1171,7 +1191,7 @@ public:
 
                     float ld2 = a012 / l12;
 
-                    float s = 1 - 3.6 * fabs(ld2);
+                    float s = 1 - 2.8 * fabs(ld2);
 
                     coeff.x = s * la;
                     coeff.y = s * lb;
@@ -1224,7 +1244,7 @@ public:
                 if (planeValid) {
                     float pd2 = pa * pointSel.x + pb * pointSel.y + pc * pointSel.z + pd;
 
-                    float s = 1 - 3.6 * fabs(pd2) / sqrt(sqrt(pointSel.x * pointSel.x //0
+                    float s = 1 - 2.8 * fabs(pd2) / sqrt(sqrt(pointSel.x * pointSel.x //0
                             + pointSel.y * pointSel.y + pointSel.z * pointSel.z));
 
                     coeff.x = s * pa;
@@ -1255,12 +1275,12 @@ public:
         if (laserCloudSelNum < 50) {
             return false;
         }
-        cv::Mat matA(laserCloudSelNum, 6, CV_32F, cv::Scalar::all(0));
-        cv::Mat matAt(6, laserCloudSelNum, CV_32F, cv::Scalar::all(0));
-        cv::Mat matAtA(6, 6, CV_32F, cv::Scalar::all(0));
+        cv::Mat matA(laserCloudSelNum, 5, CV_32F, cv::Scalar::all(0));
+        cv::Mat matAt(5, laserCloudSelNum, CV_32F, cv::Scalar::all(0));
+        cv::Mat matAtA(5, 5, CV_32F, cv::Scalar::all(0));
         cv::Mat matB(laserCloudSelNum, 1, CV_32F, cv::Scalar::all(0));
-        cv::Mat matAtB(6, 1, CV_32F, cv::Scalar::all(0));
-        cv::Mat matX(6, 1, CV_32F, cv::Scalar::all(0));
+        cv::Mat matAtB(5, 1, CV_32F, cv::Scalar::all(0));
+        cv::Mat matX(5, 1, CV_32F, cv::Scalar::all(0));
         for (int i = 0; i < laserCloudSelNum; i++) {
             pointOri = laserCloudOri->points[i];
             coeff = coeffSel->points[i];
@@ -1282,8 +1302,8 @@ public:
             matA.at<float>(i, 1) = ary;
             matA.at<float>(i, 2) = arz;
             matA.at<float>(i, 3) = coeff.x;
-            matA.at<float>(i, 4) = coeff.y;
-            matA.at<float>(i, 5) = coeff.z;
+            //matA.at<float>(i, 4) = coeff.y;
+            matA.at<float>(i, 4) = coeff.z;
             matB.at<float>(i, 0) = -coeff.intensity;
         }
         cv::transpose(matA, matAt);
@@ -1292,18 +1312,18 @@ public:
         cv::solve(matAtA, matAtB, matX, cv::DECOMP_QR);
 
         if (iterCount == 0) {
-            cv::Mat matE(1, 6, CV_32F, cv::Scalar::all(0));
-            cv::Mat matV(6, 6, CV_32F, cv::Scalar::all(0));
-            cv::Mat matV2(6, 6, CV_32F, cv::Scalar::all(0));
+            cv::Mat matE(1, 5, CV_32F, cv::Scalar::all(0));
+            cv::Mat matV(5, 5, CV_32F, cv::Scalar::all(0));
+            cv::Mat matV2(5, 5, CV_32F, cv::Scalar::all(0));
 
             cv::eigen(matAtA, matE, matV);
             matV.copyTo(matV2);
 
             isDegenerate = false;
-            float eignThre[6] = {100, 100, 100, 100, 100, 100};
-            for (int i = 5; i >= 0; i--) {
+            float eignThre[5] = {100, 100, 100, 100, 100};
+            for (int i = 4; i >= 0; i--) {
                 if (matE.at<float>(0, i) < eignThre[i]) {
-                    for (int j = 0; j < 6; j++) {
+                    for (int j = 0; j < 5; j++) {
                         matV2.at<float>(i, j) = 0;
                     }
                     isDegenerate = true;
@@ -1315,7 +1335,7 @@ public:
         }
 
         if (isDegenerate) {
-            cv::Mat matX2(6, 1, CV_32F, cv::Scalar::all(0));
+            cv::Mat matX2(5, 1, CV_32F, cv::Scalar::all(0));
             matX.copyTo(matX2);
             matX = matP * matX2;
         }
@@ -1324,8 +1344,8 @@ public:
         transformTobeMapped[1] += matX.at<float>(1, 0);
         transformTobeMapped[2] += matX.at<float>(2, 0);
         transformTobeMapped[3] += matX.at<float>(3, 0);
-        transformTobeMapped[4] += matX.at<float>(4, 0);
-        transformTobeMapped[5] += matX.at<float>(5, 0);
+        //transformTobeMapped[4] += matX.at<float>(4, 0);
+        transformTobeMapped[5] += matX.at<float>(4, 0);
 
         float deltaR = sqrt(
                             pow(pcl::rad2deg(matX.at<float>(0, 0)), 2) +
@@ -1333,8 +1353,7 @@ public:
                             pow(pcl::rad2deg(matX.at<float>(2, 0)), 2));
         float deltaT = sqrt(
                             pow(matX.at<float>(3, 0) * 100, 2) +
-                            pow(matX.at<float>(4, 0) * 100, 2) +
-                            pow(matX.at<float>(5, 0) * 100, 2));
+                            pow(matX.at<float>(4, 0) * 100, 2));
 
         if (deltaR < 0.05 && deltaT < 0.05) {
             return true;
@@ -1449,7 +1468,9 @@ public:
         /**
          * save updated transform
          */
+        printf("size: %d\n",cloudKeyPoses3D->points.size());
         if (cloudKeyPoses3D->points.size() > 1){
+            printf("inside if");
             transformAftMapped[0] = latestEstimate.rotation().pitch();
             transformAftMapped[1] = latestEstimate.rotation().yaw();
             transformAftMapped[2] = latestEstimate.rotation().roll();
@@ -1461,6 +1482,25 @@ public:
             	transformLast[i] = transformAftMapped[i];
             	transformTobeMapped[i] = transformAftMapped[i];
             }
+
+            // pitch
+            if (transformAftMapped[0] < -rotation_tolerance)
+                {transformAftMapped[0] = -rotation_tolerance;}
+            if (transformAftMapped[0] > rotation_tolerance)
+                {transformAftMapped[0] = rotation_tolerance;}
+            // roll
+            if (transformAftMapped[2] < -rotation_tolerance)
+                {transformAftMapped[2] = -rotation_tolerance;}
+            if (transformAftMapped[2] > rotation_tolerance)
+                {transformAftMapped[2] = rotation_tolerance;}
+            // z
+            if (transformAftMapped[4] < -z_tolerance)
+                {transformAftMapped[4] = -z_tolerance;
+                printf("hey1");}
+            if (transformAftMapped[4] > z_tolerance)
+                {transformAftMapped[4] = z_tolerance; printf("hey2");
+                }
+
         }
 
         pcl::PointCloud<PointType>::Ptr thisCornerKeyFrame(new pcl::PointCloud<PointType>());
