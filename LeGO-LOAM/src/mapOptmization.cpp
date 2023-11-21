@@ -1694,6 +1694,7 @@ public:
                 downsampleCurrentScan();
 
                 scan2MapOptimization();
+                printf("Scan-to-map optimization complete\n");
 
                 saveKeyFramesAndFactor();
 

@@ -110,6 +110,7 @@ private:
     ros::Publisher pubSurfPointsOdom;
     ros::Publisher pubInlierCloud;
     ros::Publisher pubOutlierCloud;
+    ros::Publisher pubRansacCloud;
     ros::Publisher pubPointToLineDist;
 
     pcl::PointCloud<PointType>::Ptr segmentedCloud;
@@ -248,6 +249,8 @@ private:
     pcl::PointCloud<PointType>::Ptr largestInlierSet;
     pcl::PointCloud<PointType>::Ptr largestInlierSetCoeffs;
     pcl::PointCloud<PointType>::Ptr smallestOutlierSet;
+    pcl::PointCloud<PointType>::Ptr ransacSamples;
+    pcl::PointCloud<PointType>::Ptr ransacCoeffs;
 
     pcl::KdTreeFLANN<PointType>::Ptr kdtreeCornerLast;
     pcl::KdTreeFLANN<PointType>::Ptr kdtreeSurfLast;
@@ -292,6 +295,7 @@ public:
         pubSurfPointsOdom = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_surf_odom", 1);
         pubInlierCloud = nh.advertise<sensor_msgs::PointCloud2>("/inlier_cloud_odom", 1);
         pubOutlierCloud = nh.advertise<sensor_msgs::PointCloud2>("/outlier_cloud_odom", 1);
+        pubRansacCloud = nh.advertise<sensor_msgs::PointCloud2>("/ransac_cloud", 1);
         pubPointToLineDist = nh.advertise<sensor_msgs::PointCloud2>("/point_to_line", 1);
 
         // Features and odom used for mapping
@@ -970,7 +974,7 @@ public:
         // interpolation coefficient calculation
         // point.intensity = int(segmentedCloud->points[i].intensity) + scanPeriod * relTime;
         // Change to 20 of 20 Hz? 1/s * s
-        float s = 10 * (pi->intensity - int(pi->intensity)); //The relative time is in the decimal part of intensity
+        float s = 20 * (pi->intensity - int(pi->intensity)); //The relative time is in the decimal part of intensity
 
         /********************************************************************************
         Ry*Rx*Rz*Pl, transform point to the global frame
@@ -1313,6 +1317,12 @@ public:
                     tripod3Cloud->push_back(tripod3);
                     coeffSel->push_back(coeff);
                 }
+                PointType coeffUnscaled;
+                coeffUnscaled.x = pointSel.x; 
+                coeffUnscaled.y = pointSel.y;
+                coeffUnscaled.z = pointSel.z;
+                coeffUnscaled.intensity = pd2;
+                coeffUnscaledSel->push_back(coeffUnscaled);
             }
         }
     }
@@ -1572,7 +1582,7 @@ void findCorrespondingCornerFeatures(int iterCount){
 
     bool calculateTransformationCorner(int iterCount){
         int pointSelNum = laserCloudOri->points.size(); // Number of total features
-        int sampleNum = 8;    // Number of random samples in RANSAC
+        int sampleNum = 6;    // Number of random samples in RANSAC
 
         largestInlierSet.reset(new pcl::PointCloud<PointType>()); 
         largestInlierSetCoeffs.reset(new pcl::PointCloud<PointType>());
@@ -1601,7 +1611,7 @@ void findCorrespondingCornerFeatures(int iterCount){
         int largestSurfInlierCount = 0;
         float sampleTransform[6];
 
-        for (int i = 0; i < 1500; i++){
+        for (int i = 0; i < 1000; i++){
             // Reset sample transform
             for (int p = 0; p < 6; p++) {
                 sampleTransform[p] = transformCur[p];
@@ -1616,17 +1626,19 @@ void findCorrespondingCornerFeatures(int iterCount){
                 }
             }
 
-            // Create point clouds with random points
-            pcl::PointCloud<PointType> ransacSamples;
-            pcl::PointCloud<PointType> ransacCoeffs;
+            ransacSamples.reset(new pcl::PointCloud<PointType>());
+            ransacCoeffs.reset(new pcl::PointCloud<PointType>());
 
             // Populate point clouds
             for (int index : selectedIndices) {
-                ransacSamples.push_back(laserCloudOri->points[index]);
-                ransacCoeffs.push_back(coeffUnscaledSel->points[index]);
+                ransacSamples->push_back(laserCloudOri->points[index]);
+                ransacCoeffs->push_back(coeffUnscaledSel->points[index]);
             }
 
+            // Optimize transformation for sample 
             for (int iter = 0; iter < 25; iter++) {
+
+            
             cv::Mat matA(sampleNum, 5, CV_32F, cv::Scalar::all(0));
             cv::Mat matAt(5, sampleNum, CV_32F, cv::Scalar::all(0));
             cv::Mat matAtA(5, 5, CV_32F, cv::Scalar::all(0));
@@ -1657,8 +1669,8 @@ void findCorrespondingCornerFeatures(int iterCount){
             // Get A and B
             for (int i = 0; i < sampleNum; i++) {
 
-                pointOri = ransacSamples.points[i];
-                coeff = ransacCoeffs.points[i];
+                PointType pointOri = ransacSamples->points[i];
+                PointType coeff = ransacCoeffs->points[i];
 
                 float arx = (-a1*pointOri.x + a2*pointOri.y + a3*pointOri.z + a4) * coeff.x
                         + (a5*pointOri.x - a6*pointOri.y + crx*pointOri.z + a7) * coeff.y
@@ -1695,7 +1707,7 @@ void findCorrespondingCornerFeatures(int iterCount){
             cv::solve(matAtA, matAtB, matX, cv::DECOMP_QR);
 
             // Degeneracy check
-            if (iterCount == 0) {
+            if (iter == 0) {
                 cv::Mat matE(1, 5, CV_32F, cv::Scalar::all(0));
                 cv::Mat matV(5, 5, CV_32F, cv::Scalar::all(0));
                 cv::Mat matV2(5, 5, CV_32F, cv::Scalar::all(0));
@@ -1724,6 +1736,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                 matX = matP * matX2;
             }
 
+            // Update sampleTransform
             sampleTransform[0] += matX.at<float>(0, 0);
             sampleTransform[1] += matX.at<float>(1, 0);
             sampleTransform[2] += matX.at<float>(2, 0);
@@ -1735,7 +1748,79 @@ void findCorrespondingCornerFeatures(int iterCount){
                 if(isnan(sampleTransform[i]))
                     sampleTransform[i]=0;
             }
+
+            //Update linearization point using new transform
+            for (int i = 0; i < sampleNum; i++) {
+                PointType point = ransacSamples->points[i];
+                int indexInLaserCloudOri = selectedIndices[i];
+                PointType transformedPoint;
+
+                // Point is a surf feature
+                if (indexInLaserCloudOri < surfCorrespondences){
+                    float s = 10 * (point.intensity - int(point.intensity));
+                    float rx = s * sampleTransform[0];
+                    float ry = s * sampleTransform[1];
+                    float rz = s * sampleTransform[2];
+                    float tx = s * sampleTransform[3];
+                    float ty = s * sampleTransform[4];
+                    float tz = s * sampleTransform[5];
+
+                    // z-x-y rotation 
+                    // Rotate around z-axis and translate
+                    float x1 = cos(rz) * (point.x - tx) + sin(rz) * (point.y - ty);
+                    float y1 = -sin(rz) * (point.x - tx) + cos(rz) * (point.y - ty);
+                    float z1 = (point.z - tz);
+                    // Rotate around x-axis
+                    float x2 = x1;
+                    float y2 = cos(rx) * y1 + sin(rx) * z1;
+                    float z2 = -sin(rx) * y1 + cos(rx) * z1;
+                    // Rotate around y-axis
+                    transformedPoint.x = cos(ry) * x2 - sin(ry) * z2;
+                    transformedPoint.y = y2;
+                    transformedPoint.z = sin(ry) * x2 + cos(ry) * z2;
+                    transformedPoint.intensity = point.intensity;
+
+                    // calculate new point to line distance
+                    tripod1 = tripod1Cloud->points[indexInLaserCloudOri];
+                    tripod2 = tripod2Cloud->points[indexInLaserCloudOri];
+                    tripod3 = tripod3Cloud->points[indexInLaserCloudOri];
+                    float pl2 = pointToPlaneDist(transformedPoint, tripod1, tripod2, tripod3);
+                    ransacCoeffs->points[i].intensity = pl2;
+                }
+                //Point is an edge feature
+                else {
+                    float s = 10 * (point.intensity - int(point.intensity));
+                    float rx = s * sampleTransform[0];
+                    float ry = s * sampleTransform[1];
+                    float rz = s * sampleTransform[2];
+                    float tx = s * sampleTransform[3];
+                    float ty = s * sampleTransform[4];
+                    float tz = s * sampleTransform[5];
+
+                    // z-x-y rotation 
+                    // Rotate around z-axis and translate
+                    float x1 = cos(rz) * (point.x - tx) + sin(rz) * (point.y - ty);
+                    float y1 = -sin(rz) * (point.x - tx) + cos(rz) * (point.y - ty);
+                    float z1 = (point.z - tz);
+                    // Rotate around x-axis
+                    float x2 = x1;
+                    float y2 = cos(rx) * y1 + sin(rx) * z1;
+                    float z2 = -sin(rx) * y1 + cos(rx) * z1;
+                    // Rotate around y-axis
+                    transformedPoint.x = cos(ry) * x2 - sin(ry) * z2;
+                    transformedPoint.y = y2;
+                    transformedPoint.z = sin(ry) * x2 + cos(ry) * z2;
+                    transformedPoint.intensity = point.intensity;
+
+                    // calculate new point to line distance
+                    tripod1 = tripod1Cloud->points[indexInLaserCloudOri];
+                    tripod2 = tripod2Cloud->points[indexInLaserCloudOri];
+                    float ld2 = pointToLineDist(transformedPoint, tripod1, tripod2);
+                    ransacCoeffs->points[i].intensity = ld2;
+                }
             }
+        }
+
             // Inlier check
             int inlierCount = 0;
             int cornerInlierCount = 0;
@@ -1862,6 +1947,11 @@ void findCorrespondingCornerFeatures(int iterCount){
 
         sensor_msgs::PointCloud2 laserCloudOutMsg;
 
+        pcl::toROSMsg(*ransacSamples, laserCloudOutMsg);
+        laserCloudOutMsg.header.stamp = cloudHeader.stamp;
+        laserCloudOutMsg.header.frame_id = "camera";
+        pubRansacCloud.publish(laserCloudOutMsg);
+
         pcl::toROSMsg(*largestInlierSet, laserCloudOutMsg);
         laserCloudOutMsg.header.stamp = cloudHeader.stamp;
         laserCloudOutMsg.header.frame_id = "camera";
@@ -1931,7 +2021,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                 matA.at<float>(i, 3) = atx;
                 //matA.at<float>(i, 4) = aty;
                 matA.at<float>(i, 4) = atz;
-                matB.at<float>(i, 0) = -0.1 * d2;
+                matB.at<float>(i, 0) = -0.5 * d2;
             }
 
             // Solve problem
@@ -1992,7 +2082,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                             pow(matX.at<float>(4, 0) * 100, 2));
             //printf("deltaT: %f\ndeltaR: %f\n",deltaT,deltaR);
             if (deltaR < 0.05 && deltaT < 0.05) {
-                printf("Converged\n");
+                printf("Odometry converged at iteration %d\n",iterCount);
                 return false;
             }
         }

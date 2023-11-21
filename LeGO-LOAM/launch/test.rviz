@@ -533,8 +533,8 @@ Visualization Manager:
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 23.426074981689453
-        Min Value: -57.58987045288086
+        Max Value: 22.966739654541016
+        Min Value: -37.12021255493164
         Value: true
       Axis: Z
       Channel Name: intensity
@@ -958,6 +958,34 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: false
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz/PointCloud2
+      Color: 255; 245; 34
+      Color Transformer: FlatColor
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Min Color: 0; 0; 0
+      Name: Ransac cloud
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.699999988079071
+      Style: Spheres
+      Topic: /ransac_cloud
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 0; 0; 0
@@ -990,9 +1018,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.4597976803779602
+      Pitch: 0.3797977566719055
       Target Frame: base_link
-      Yaw: 1.806539535522461
+      Yaw: 1.2515406608581543
     Saved: ~
 Window Geometry:
   Displays:

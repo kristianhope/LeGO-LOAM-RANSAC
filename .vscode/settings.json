@@ -15,6 +15,9 @@
         "*.ipp": "cpp",
         "random": "cpp",
         "array": "cpp",
-        "string_view": "cpp"
+        "string_view": "cpp",
+        "bitset": "cpp",
+        "memory": "cpp",
+        "optional": "cpp"
     }
 }
