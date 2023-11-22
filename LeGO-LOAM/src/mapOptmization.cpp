@@ -1706,6 +1706,9 @@ public:
 
                 clearCloud();
             }
+            else{
+                printf("Wait for mapping\n");
+            }
         }
     }
 };

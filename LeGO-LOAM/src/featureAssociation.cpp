@@ -109,9 +109,13 @@ private:
     ros::Publisher pubTriPod2;
     ros::Publisher pubSurfPointsOdom;
     ros::Publisher pubInlierCloud;
-    ros::Publisher pubOutlierCloud;
+    ros::Publisher pubEdgeOutlierCloud;
+    ros::Publisher pubSurfOutlierCloud;
+    ros::Publisher pubEdgeInlierCloud;
+    ros::Publisher pubSurfInlierCloud;
     ros::Publisher pubRansacCloud;
     ros::Publisher pubPointToLineDist;
+    ros::Publisher pubPointToPlaneDist;
 
     pcl::PointCloud<PointType>::Ptr segmentedCloud;
     pcl::PointCloud<PointType>::Ptr outlierCloud;
@@ -245,10 +249,14 @@ private:
     pcl::PointCloud<PointType>::Ptr tripod2Cloud;
     pcl::PointCloud<PointType>::Ptr tripod3Cloud;
     pcl::PointCloud<PointType>::Ptr coeffSel;
-    pcl::PointCloud<PointType>::Ptr coeffUnscaledSel;
+    pcl::PointCloud<PointType>::Ptr coeffUnscaledSelEdge;
+    pcl::PointCloud<PointType>::Ptr coeffUnscaledSelSurf;
     pcl::PointCloud<PointType>::Ptr largestInlierSet;
     pcl::PointCloud<PointType>::Ptr largestInlierSetCoeffs;
-    pcl::PointCloud<PointType>::Ptr smallestOutlierSet;
+    pcl::PointCloud<PointType>::Ptr smallestEdgeOutlierSet;
+    pcl::PointCloud<PointType>::Ptr smallestSurfOutlierSet;
+    pcl::PointCloud<PointType>::Ptr largestEdgeInlierSet;
+    pcl::PointCloud<PointType>::Ptr largestSurfInlierSet;
     pcl::PointCloud<PointType>::Ptr ransacSamples;
     pcl::PointCloud<PointType>::Ptr ransacCoeffs;
 
@@ -294,9 +302,13 @@ public:
         pubTriPod2 = nh.advertise<sensor_msgs::PointCloud2>("/tripod2", 1);
         pubSurfPointsOdom = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_surf_odom", 1);
         pubInlierCloud = nh.advertise<sensor_msgs::PointCloud2>("/inlier_cloud_odom", 1);
-        pubOutlierCloud = nh.advertise<sensor_msgs::PointCloud2>("/outlier_cloud_odom", 1);
+        pubEdgeOutlierCloud = nh.advertise<sensor_msgs::PointCloud2>("/edge_outlier_cloud_odom", 1);
+        pubSurfOutlierCloud = nh.advertise<sensor_msgs::PointCloud2>("/surf_outlier_cloud_odom", 1);
+        pubEdgeInlierCloud = nh.advertise<sensor_msgs::PointCloud2>("/edge_inlier_cloud_odom", 1);
+        pubSurfInlierCloud = nh.advertise<sensor_msgs::PointCloud2>("/surf_inlier_cloud_odom", 1);
         pubRansacCloud = nh.advertise<sensor_msgs::PointCloud2>("/ransac_cloud", 1);
         pubPointToLineDist = nh.advertise<sensor_msgs::PointCloud2>("/point_to_line", 1);
+        pubPointToPlaneDist = nh.advertise<sensor_msgs::PointCloud2>("/point_to_plane", 1);
 
         // Features and odom used for mapping
         pubLaserCloudCornerLast = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_corner_last", 2);
@@ -410,10 +422,14 @@ public:
         tripod2Cloud.reset(new pcl::PointCloud<PointType>());
         tripod3Cloud.reset(new pcl::PointCloud<PointType>());
         coeffSel.reset(new pcl::PointCloud<PointType>());
-        coeffUnscaledSel.reset(new pcl::PointCloud<PointType>());
+        coeffUnscaledSelEdge.reset(new pcl::PointCloud<PointType>());
+        coeffUnscaledSelSurf.reset(new pcl::PointCloud<PointType>());
         largestInlierSet.reset(new pcl::PointCloud<PointType>());
         largestInlierSetCoeffs.reset(new pcl::PointCloud<PointType>());
-        smallestOutlierSet.reset(new pcl::PointCloud<PointType>());
+        smallestEdgeOutlierSet.reset(new pcl::PointCloud<PointType>());
+        smallestSurfOutlierSet.reset(new pcl::PointCloud<PointType>());
+        largestEdgeInlierSet.reset(new pcl::PointCloud<PointType>());
+        largestSurfInlierSet.reset(new pcl::PointCloud<PointType>());
 
         kdtreeCornerLast.reset(new pcl::KdTreeFLANN<PointType>());
         kdtreeSurfLast.reset(new pcl::KdTreeFLANN<PointType>());
@@ -974,7 +990,7 @@ public:
         // interpolation coefficient calculation
         // point.intensity = int(segmentedCloud->points[i].intensity) + scanPeriod * relTime;
         // Change to 20 of 20 Hz? 1/s * s
-        float s = 20 * (pi->intensity - int(pi->intensity)); //The relative time is in the decimal part of intensity
+        float s = (1/scanPeriod) * (pi->intensity - int(pi->intensity)); //The relative time is in the decimal part of intensity
 
         /********************************************************************************
         Ry*Rx*Rz*Pl, transform point to the global frame
@@ -1321,10 +1337,16 @@ public:
                 coeffUnscaled.x = pointSel.x; 
                 coeffUnscaled.y = pointSel.y;
                 coeffUnscaled.z = pointSel.z;
-                coeffUnscaled.intensity = pd2;
-                coeffUnscaledSel->push_back(coeffUnscaled);
+                coeffUnscaled.intensity = fabs(pd2);
+                coeffUnscaledSelSurf->push_back(coeffUnscaled);
             }
+            
         }
+        sensor_msgs::PointCloud2 laserCloudOutMsg;
+        pcl::toROSMsg(*coeffUnscaledSelSurf, laserCloudOutMsg);
+        laserCloudOutMsg.header.stamp = cloudHeader.stamp;
+        laserCloudOutMsg.header.frame_id = "camera";
+        pubPointToPlaneDist.publish(laserCloudOutMsg);
     }
 
     bool calculateTransformationSurf(int iterCount){
@@ -1568,12 +1590,12 @@ void findCorrespondingCornerFeatures(int iterCount){
                 coeffUnscaled.y = y0;
                 coeffUnscaled.z = z0;
                 coeffUnscaled.intensity = ld2;
-                coeffUnscaledSel->push_back(coeffUnscaled);
+                coeffUnscaledSelEdge->push_back(coeffUnscaled);
             }
 
         }
         sensor_msgs::PointCloud2 laserCloudOutMsg;
-        pcl::toROSMsg(*coeffUnscaledSel, laserCloudOutMsg);
+        pcl::toROSMsg(*coeffUnscaledSelEdge, laserCloudOutMsg);
         laserCloudOutMsg.header.stamp = cloudHeader.stamp;
         laserCloudOutMsg.header.frame_id = "camera";
         pubPointToLineDist.publish(laserCloudOutMsg);
@@ -1582,29 +1604,38 @@ void findCorrespondingCornerFeatures(int iterCount){
 
     bool calculateTransformationCorner(int iterCount){
         int pointSelNum = laserCloudOri->points.size(); // Number of total features
-        int sampleNum = 6;    // Number of random samples in RANSAC
+        int sampleNum = 8;    // Number of random samples in RANSAC
+
+        //TODO:
+        // prøve ransac med segments
+
+        // prøve og bare kjøre ransac en gang !!!!!
 
         largestInlierSet.reset(new pcl::PointCloud<PointType>()); 
         largestInlierSetCoeffs.reset(new pcl::PointCloud<PointType>());
-        smallestOutlierSet.reset(new pcl::PointCloud<PointType>());
+        smallestEdgeOutlierSet.reset(new pcl::PointCloud<PointType>());
+        smallestSurfOutlierSet.reset(new pcl::PointCloud<PointType>());
+        largestEdgeInlierSet.reset(new pcl::PointCloud<PointType>());
+        largestSurfInlierSet.reset(new pcl::PointCloud<PointType>());
 
-        double iterCountFactorCorner = 0.05+ (0.5 - 0.05) * (25 - iterCount) / 25.0;
-        double numPointsFactorCorner = 0.5 - (0.5 - 0.1) * (cornerCorrespondences - 10) / 300;
-        if (numPointsFactorCorner < 0.05) {
-            numPointsFactorCorner = 0.05;
+        double iterCountFactorCorner = 0.08 + (0.25 - 0.08) * (25 - iterCount) / 25.0;
+        double numPointsFactorCorner = 0.25 - (0.25 - 0.08) * (cornerCorrespondences - 10) / 400;
+        if (numPointsFactorCorner < 0.08) {
+            numPointsFactorCorner = 0.08;
         }
         
-        double iterCountFactorSurf = 0.005 + (0.05 - 0.005) * (25 - iterCount) / 25.0;
-        double numPointsFactorSurf = 0.05 - (0.05 - 0.005) * (surfCorrespondences - 10) / 350;
-        double cornerSurfDiffFactor = 0.005 + (0.05 - 0.005) * (200 - abs(surfCorrespondences-cornerCorrespondences))/200;
-        if (numPointsFactorSurf < 0.005) {
-            numPointsFactorSurf = 0.005;
+        double iterCountFactorSurf = 0.008 + (0.05 - 0.008) * (25 - iterCount) / 25.0;
+        double numPointsFactorSurf = 0.05 - (0.05 - 0.008) * (surfCorrespondences - 10) / 350;
+        double cornerSurfDiffFactor = 0.008 + (0.05 - 0.008) * (150 - abs(surfCorrespondences-cornerCorrespondences))/150;
+        if (numPointsFactorSurf < 0.008) {
+            numPointsFactorSurf = 0.008;
         }
 
         // Combine the two factors using some weighting, e.g., taking the average
-        double cornerFactor = 0.4*iterCountFactorCorner + 0.6*numPointsFactorCorner;
-        double surfFactor = 0.5*iterCountFactorSurf + 0.25*numPointsFactorSurf + 0.25 * cornerSurfDiffFactor;
-        //double factor = 0.5;
+        double cornerFactor = 0.2*iterCountFactorCorner + 0.8*numPointsFactorCorner;
+        double surfFactor = 0.2*iterCountFactorSurf + 0.6*numPointsFactorSurf + 0.2 * cornerSurfDiffFactor;
+        //double cornerFactor = 0.1;
+        //double surfFactor = 0.01;
 
         int largestInlierCount = 0;
         int largestCornerInlierCount = 0;
@@ -1632,13 +1663,12 @@ void findCorrespondingCornerFeatures(int iterCount){
             // Populate point clouds
             for (int index : selectedIndices) {
                 ransacSamples->push_back(laserCloudOri->points[index]);
-                ransacCoeffs->push_back(coeffUnscaledSel->points[index]);
+                ransacCoeffs->push_back(coeffUnscaledSelEdge->points[index]);
             }
 
             // Optimize transformation for sample 
-            for (int iter = 0; iter < 25; iter++) {
+            for (int iter = 0; iter < 30; iter++) {
 
-            
             cv::Mat matA(sampleNum, 5, CV_32F, cv::Scalar::all(0));
             cv::Mat matAt(5, sampleNum, CV_32F, cv::Scalar::all(0));
             cv::Mat matAtA(5, 5, CV_32F, cv::Scalar::all(0));
@@ -1697,7 +1727,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                 matA.at<float>(i, 3) = atx;
                 //matA.at<float>(i, 4) = aty;
                 matA.at<float>(i, 4) = atz;
-                matB.at<float>(i, 0) = -0.1 * d2;
+                matB.at<float>(i, 0) = -0.05 * d2;
             }
 
             // Solve problem
@@ -1749,6 +1779,20 @@ void findCorrespondingCornerFeatures(int iterCount){
                     sampleTransform[i]=0;
             }
 
+            float deltaR = sqrt(
+                            pow(rad2deg(matX.at<float>(0, 0)), 2) +
+                            pow(rad2deg(matX.at<float>(1, 0)), 2) +
+                            pow(rad2deg(matX.at<float>(2, 0)), 2));
+
+            float deltaT = sqrt(
+                            pow(matX.at<float>(3, 0) * 100, 2) +
+                            pow(matX.at<float>(4, 0) * 100, 2));
+            //printf("deltaT: %f\ndeltaR: %f\n",deltaT,deltaR);
+            if (deltaR < 0.1 && deltaT < 0.001) {
+                //printf("Ransac iteration converged at iteration %d\n",iterCount);
+                break;
+            }
+
             //Update linearization point using new transform
             for (int i = 0; i < sampleNum; i++) {
                 PointType point = ransacSamples->points[i];
@@ -1757,7 +1801,7 @@ void findCorrespondingCornerFeatures(int iterCount){
 
                 // Point is a surf feature
                 if (indexInLaserCloudOri < surfCorrespondences){
-                    float s = 10 * (point.intensity - int(point.intensity));
+                    float s = 20 * (point.intensity - int(point.intensity));
                     float rx = s * sampleTransform[0];
                     float ry = s * sampleTransform[1];
                     float rz = s * sampleTransform[2];
@@ -1789,7 +1833,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                 }
                 //Point is an edge feature
                 else {
-                    float s = 10 * (point.intensity - int(point.intensity));
+                    float s = 20 * (point.intensity - int(point.intensity));
                     float rx = s * sampleTransform[0];
                     float ry = s * sampleTransform[1];
                     float rz = s * sampleTransform[2];
@@ -1827,7 +1871,10 @@ void findCorrespondingCornerFeatures(int iterCount){
             int surfInlierCount = 0;
             pcl::PointCloud<PointType> inlierCloud;
             pcl::PointCloud<PointType> inlierCoeff;
-            pcl::PointCloud<PointType> outlierCloud;
+            pcl::PointCloud<PointType> edgeOutlierCloud;
+            pcl::PointCloud<PointType> surfOutlierCloud;
+            pcl::PointCloud<PointType> edgeInlierCloud;
+            pcl::PointCloud<PointType> surfInlierCloud;
             vector<float> p2l;
 
             // Surf inliers
@@ -1837,7 +1884,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                 PointType coeff = coeffSel->points[k];
                 PointType transformedPoint;
 
-                float s = 10 * (point.intensity - int(point.intensity));
+                float s = 20 * (point.intensity - int(point.intensity));
                 float rx = s * sampleTransform[0];
                 float ry = s * sampleTransform[1];
                 float rz = s * sampleTransform[2];
@@ -1870,9 +1917,10 @@ void findCorrespondingCornerFeatures(int iterCount){
                     surfInlierCount += 1;
                     inlierCloud.push_back(point);
                     inlierCoeff.push_back(coeff);
+                    surfInlierCloud.push_back(point);
                 }
                 else {
-                    outlierCloud.push_back(point);
+                    surfOutlierCloud.push_back(point);
                 }
             }
 
@@ -1883,7 +1931,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                 PointType coeff = coeffSel->points[k];
                 PointType transformedPoint;
 
-                float s = 10 * (point.intensity - int(point.intensity));
+                float s = 20 * (point.intensity - int(point.intensity));
                 float rx = s * sampleTransform[0];
                 float ry = s * sampleTransform[1];
                 float rz = s * sampleTransform[2];
@@ -1916,9 +1964,10 @@ void findCorrespondingCornerFeatures(int iterCount){
                     cornerInlierCount += 1;
                     inlierCloud.push_back(point);
                     inlierCoeff.push_back(coeff);
+                    edgeInlierCloud.push_back(point);
                 }
                 else {
-                    outlierCloud.push_back(point);
+                    edgeOutlierCloud.push_back(point);
                 }
             }
 
@@ -1927,7 +1976,10 @@ void findCorrespondingCornerFeatures(int iterCount){
             if (inlierCount > largestInlierCount) {
                 largestInlierSet.reset(new pcl::PointCloud<PointType>(inlierCloud)); 
                 largestInlierSetCoeffs.reset(new pcl::PointCloud<PointType>(inlierCoeff));
-                smallestOutlierSet.reset(new pcl::PointCloud<PointType>(outlierCloud));
+                smallestEdgeOutlierSet.reset(new pcl::PointCloud<PointType>(edgeOutlierCloud));
+                smallestSurfOutlierSet.reset(new pcl::PointCloud<PointType>(surfOutlierCloud));
+                largestEdgeInlierSet.reset(new pcl::PointCloud<PointType>(edgeInlierCloud));
+                largestSurfInlierSet.reset(new pcl::PointCloud<PointType>(surfInlierCloud));
                 largestInlierCount = inlierCount;
                 largestCornerInlierCount = cornerInlierCount;
                 largestSurfInlierCount = surfInlierCount;
@@ -1937,12 +1989,13 @@ void findCorrespondingCornerFeatures(int iterCount){
         int inlierSetSize = largestInlierSet->points.size();
 
         if (iterCount>0 && iterCount % 20 == 0){
+        printf("Iter: %d \n", iterCount);
         printf("Surf limit: %f\n",surfFactor);
         printf("Corner limit: %f\n",cornerFactor);
-        printf("Iter: %d \n", iterCount);
-        printf("Corner inliers: %d\n",largestCornerInlierCount);
-        printf("Surf inliers: %d\n",largestSurfInlierCount);
+        printf("Corner inliers: %d/%d\n",largestCornerInlierCount,cornerCorrespondences);
+        printf("Surf inliers: %d/%d\n",largestSurfInlierCount,surfCorrespondences);
         printf("Inliers : %d/%d \n", inlierSetSize,pointSelNum);
+        printf("\n");
         }
 
         sensor_msgs::PointCloud2 laserCloudOutMsg;
@@ -1957,12 +2010,29 @@ void findCorrespondingCornerFeatures(int iterCount){
         laserCloudOutMsg.header.frame_id = "camera";
         pubInlierCloud.publish(laserCloudOutMsg);
 
-        pcl::toROSMsg(*smallestOutlierSet, laserCloudOutMsg);
+        pcl::toROSMsg(*smallestEdgeOutlierSet, laserCloudOutMsg);
         laserCloudOutMsg.header.stamp = cloudHeader.stamp;
         laserCloudOutMsg.header.frame_id = "camera";
-        pubOutlierCloud.publish(laserCloudOutMsg);
+        pubEdgeOutlierCloud.publish(laserCloudOutMsg);
+
+        pcl::toROSMsg(*smallestSurfOutlierSet, laserCloudOutMsg);
+        laserCloudOutMsg.header.stamp = cloudHeader.stamp;
+        laserCloudOutMsg.header.frame_id = "camera";
+        pubSurfOutlierCloud.publish(laserCloudOutMsg);
+
+        // publish edge inliers and surf inliers as above
+        pcl::toROSMsg(*largestEdgeInlierSet, laserCloudOutMsg);
+        laserCloudOutMsg.header.stamp = cloudHeader.stamp;
+        laserCloudOutMsg.header.frame_id = "camera";
+        pubEdgeInlierCloud.publish(laserCloudOutMsg);
+
+        pcl::toROSMsg(*largestSurfInlierSet, laserCloudOutMsg);
+        laserCloudOutMsg.header.stamp = cloudHeader.stamp;
+        laserCloudOutMsg.header.frame_id = "camera";
+        pubSurfInlierCloud.publish(laserCloudOutMsg);
+
         
-        if (inlierSetSize > 0.2*pointSelNum) {
+        if (inlierSetSize > 0.4*pointSelNum || inlierSetSize > 100) {
             // Solve least squares problem with inliers
             cv::Mat matA(inlierSetSize, 5, CV_32F, cv::Scalar::all(0));
             cv::Mat matAt(5, inlierSetSize, CV_32F, cv::Scalar::all(0));
@@ -2021,7 +2091,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                 matA.at<float>(i, 3) = atx;
                 //matA.at<float>(i, 4) = aty;
                 matA.at<float>(i, 4) = atz;
-                matB.at<float>(i, 0) = -0.5 * d2;
+                matB.at<float>(i, 0) = -0.05 * d2;
             }
 
             // Solve problem
@@ -2081,13 +2151,20 @@ void findCorrespondingCornerFeatures(int iterCount){
                             pow(matX.at<float>(3, 0) * 100, 2) +
                             pow(matX.at<float>(4, 0) * 100, 2));
             //printf("deltaT: %f\ndeltaR: %f\n",deltaT,deltaR);
-            if (deltaR < 0.05 && deltaT < 0.05) {
+            if (deltaR < 0.01 && deltaT < 0.01) {
                 printf("Odometry converged at iteration %d\n",iterCount);
                 return false;
             }
         }
         else {
             printf("Not sufficient inliers from ransac (%d/%d). Using all features for optimization.\n",inlierSetSize,pointSelNum);
+            printf("Surf limit: %f\n",surfFactor);
+            printf("Corner limit: %f\n",cornerFactor);
+            printf("Iter: %d \n", iterCount);
+            printf("Corner inliers: %d/%d\n",largestCornerInlierCount,cornerCorrespondences);
+            printf("Surf inliers: %d/%d\n",largestSurfInlierCount,surfCorrespondences);
+            printf("Inliers : %d/%d \n", inlierSetSize,pointSelNum);
+            printf("\n");
             // Solve least squares problem with inliers
             cv::Mat matA(pointSelNum, 5, CV_32F, cv::Scalar::all(0));
             cv::Mat matAt(5, pointSelNum, CV_32F, cv::Scalar::all(0));
@@ -2206,7 +2283,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                             pow(matX.at<float>(3, 0) * 100, 2) +
                             pow(matX.at<float>(4, 0) * 100, 2));
             //printf("deltaT: %f\ndeltaR: %f\n",deltaT,deltaR);
-            if (deltaR < 0.05 && deltaT < 0.05) {
+            if (deltaR < 0.01 && deltaT < 0.01) {
                 printf("Converged\n");
                 return false;
             }
@@ -2226,7 +2303,7 @@ void findCorrespondingCornerFeatures(int iterCount){
             tripod1Cloud->clear();
             tripod2Cloud->clear();
             coeffSel->clear();
-            coeffUnscaledSel->clear();
+            coeffUnscaledSelEdge->clear();
 
             findCorrespondingSurfFeatures(iterCount1);
 
@@ -2246,15 +2323,18 @@ void findCorrespondingCornerFeatures(int iterCount){
 	    pubSurfPointsOdom.publish(laserCloudOutMsg);
 
 
-        for (int iterCount2 = 0; iterCount2 < 25; iterCount2++) {
+        for (int iterCount2 = 0; iterCount2 < 30; iterCount2++) {
             laserCloudOri->clear();
             tripod1Cloud->clear();
             tripod2Cloud->clear();
             tripod3Cloud->clear();
             coeffSel->clear();
-            coeffUnscaledSel->clear();
+            coeffUnscaledSelEdge->clear();
+            coeffUnscaledSelSurf->clear();
             largestInlierSet->clear();
             largestInlierSetCoeffs->clear();
+            //ransacSamples->clear();
+            //ransacCoeffs->clear();
 
             findCorrespondingSurfFeatures(iterCount2);
 
@@ -2266,8 +2346,8 @@ void findCorrespondingCornerFeatures(int iterCount){
             cornerCorrespondences = laserCloudOri->points.size() - surfCorrespondences;
             //printf("corner size: %d\n",cornerCorrespondences);
             
-            if (laserCloudOri->points.size() < 30){
-                printf("Too few corresponding features");
+            if (laserCloudOri->points.size() < 20){
+                printf("Too few corresponding features\n");
                 continue;
             }
             if (calculateTransformationCorner(iterCount2) == false)
@@ -2516,8 +2596,8 @@ void findCorrespondingCornerFeatures(int iterCount){
     {
 
         if (newSegmentedCloud && newSegmentedCloudInfo && newOutlierCloud &&
-            std::abs(timeNewSegmentedCloudInfo - timeNewSegmentedCloud) < 0.05 &&
-            std::abs(timeNewOutlierCloud - timeNewSegmentedCloud) < 0.05){ // in sync
+            std::abs(timeNewSegmentedCloudInfo - timeNewSegmentedCloud) < 0.01 &&
+            std::abs(timeNewOutlierCloud - timeNewSegmentedCloud) < 0.01){ // in sync
 
             newSegmentedCloud = false;
             newSegmentedCloudInfo = false;

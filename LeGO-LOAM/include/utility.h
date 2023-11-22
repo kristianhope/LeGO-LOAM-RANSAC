@@ -114,7 +114,7 @@ extern const int groundScanInd = 30;
 // extern const int groundScanInd = 15;
 
 extern const bool loopClosureEnableFlag = true;
-extern const double mappingProcessInterval = 0.3;
+extern const double mappingProcessInterval = 0.3/2;
 
 extern const float scanPeriod = 0.05; // 20 Hz?
 extern const int systemDelay = 0;
