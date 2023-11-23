@@ -881,7 +881,7 @@ public:
         // interpolation coefficient calculation
         // point.intensity = int(segmentedCloud->points[i].intensity) + scanPeriod * relTime;
         // Change to 20 of 20 Hz? 1/s * s
-        float s = 10 * (pi->intensity - int(pi->intensity)); //The relative time is in the decimal part of intensity
+        float s = 20 * (pi->intensity - int(pi->intensity)); //The relative time is in the decimal part of intensity
 
         /********************************************************************************
         Ry*Rx*Rz*Pl, transform point to the global frame
@@ -1530,12 +1530,12 @@ public:
 
         int pointSelNum = laserCloudOri->points.size();
 
-        cv::Mat matA(pointSelNum, 6, CV_32F, cv::Scalar::all(0));
-        cv::Mat matAt(6, pointSelNum, CV_32F, cv::Scalar::all(0));
-        cv::Mat matAtA(6, 6, CV_32F, cv::Scalar::all(0));
+        cv::Mat matA(pointSelNum, 5, CV_32F, cv::Scalar::all(0));
+        cv::Mat matAt(5, pointSelNum, CV_32F, cv::Scalar::all(0));
+        cv::Mat matAtA(5, 5, CV_32F, cv::Scalar::all(0));
         cv::Mat matB(pointSelNum, 1, CV_32F, cv::Scalar::all(0));
-        cv::Mat matAtB(6, 1, CV_32F, cv::Scalar::all(0));
-        cv::Mat matX(6, 1, CV_32F, cv::Scalar::all(0));
+        cv::Mat matAtB(5, 1, CV_32F, cv::Scalar::all(0));
+        cv::Mat matX(5, 1, CV_32F, cv::Scalar::all(0));
 
         float srx = sin(transformCur[0]);
         float crx = cos(transformCur[0]);
@@ -1557,21 +1557,22 @@ public:
         float c1 = -b6; float c2 = b5; float c3 = tx*b6 - ty*b5; float c4 = -crx*crz; float c5 = crx*srz; float c6 = ty*c5 + tx*-c4;
         float c7 = b2; float c8 = -b1; float c9 = tx*-b2 - ty*-b1;
 
+        // Get A and B
         for (int i = 0; i < pointSelNum; i++) {
 
-            pointOri = laserCloudOri->points[i];
-            coeff = coeffSel->points[i];
+            PointType pointOri = laserCloudOri->points[i];
+            PointType coeff = coeffSel->points[i];
 
             float arx = (-a1*pointOri.x + a2*pointOri.y + a3*pointOri.z + a4) * coeff.x
-                      + (a5*pointOri.x - a6*pointOri.y + crx*pointOri.z + a7) * coeff.y
-                      + (a8*pointOri.x - a9*pointOri.y - a10*pointOri.z + a11) * coeff.z;
+                    + (a5*pointOri.x - a6*pointOri.y + crx*pointOri.z + a7) * coeff.y
+                    + (a8*pointOri.x - a9*pointOri.y - a10*pointOri.z + a11) * coeff.z;
 
             float ary = (b1*pointOri.x + b2*pointOri.y - b3*pointOri.z + b4) * coeff.x
-                      + (b5*pointOri.x + b6*pointOri.y - b7*pointOri.z + b8) * coeff.z;
+                    + (b5*pointOri.x + b6*pointOri.y - b7*pointOri.z + b8) * coeff.z;
 
             float arz = (c1*pointOri.x + c2*pointOri.y + c3) * coeff.x
-                      + (c4*pointOri.x - c5*pointOri.y + c6) * coeff.y
-                      + (c7*pointOri.x + c8*pointOri.y + c9) * coeff.z;
+                    + (c4*pointOri.x - c5*pointOri.y + c6) * coeff.y
+                    + (c7*pointOri.x + c8*pointOri.y + c9) * coeff.z;
 
             float atx = -b5 * coeff.x + c5 * coeff.y + b1 * coeff.z;
 
@@ -1580,34 +1581,36 @@ public:
             float atz = b7 * coeff.x - srx * coeff.y - b3 * coeff.z;
 
             float d2 = coeff.intensity;
-
+            
             matA.at<float>(i, 0) = arx;
             matA.at<float>(i, 1) = ary;
             matA.at<float>(i, 2) = arz;
             matA.at<float>(i, 3) = atx;
-            matA.at<float>(i, 4) = aty;
-            matA.at<float>(i, 5) = atz;
+            //matA.at<float>(i, 4) = aty;
+            matA.at<float>(i, 4) = atz;
             matB.at<float>(i, 0) = -0.05 * d2;
         }
 
+        // Solve problem
         cv::transpose(matA, matAt);
         matAtA = matAt * matA;
         matAtB = matAt * matB;
         cv::solve(matAtA, matAtB, matX, cv::DECOMP_QR);
 
+        // Degeneracy check
         if (iterCount == 0) {
-            cv::Mat matE(1, 6, CV_32F, cv::Scalar::all(0));
-            cv::Mat matV(6, 6, CV_32F, cv::Scalar::all(0));
-            cv::Mat matV2(6, 6, CV_32F, cv::Scalar::all(0));
+            cv::Mat matE(1, 5, CV_32F, cv::Scalar::all(0));
+            cv::Mat matV(5, 5, CV_32F, cv::Scalar::all(0));
+            cv::Mat matV2(5, 5, CV_32F, cv::Scalar::all(0));
 
             cv::eigen(matAtA, matE, matV);
             matV.copyTo(matV2);
 
             isDegenerate = false;
-            float eignThre[6] = {10, 10, 10, 10, 10, 10};
-            for (int i = 5; i >= 0; i--) {
+            float eignThre[5] = {10, 10, 10, 10, 10};
+            for (int i = 4; i >= 0; i--) {
                 if (matE.at<float>(0, i) < eignThre[i]) {
-                    for (int j = 0; j < 6; j++) {
+                    for (int j = 0; j < 5; j++) {
                         matV2.at<float>(i, j) = 0;
                     }
                     isDegenerate = true;
@@ -1619,7 +1622,7 @@ public:
         }
 
         if (isDegenerate) {
-            cv::Mat matX2(6, 1, CV_32F, cv::Scalar::all(0));
+            cv::Mat matX2(5, 1, CV_32F, cv::Scalar::all(0));
             matX.copyTo(matX2);
             matX = matP * matX2;
         }
@@ -1628,8 +1631,8 @@ public:
         transformCur[1] += matX.at<float>(1, 0);
         transformCur[2] += matX.at<float>(2, 0);
         transformCur[3] += matX.at<float>(3, 0);
-        transformCur[4] += matX.at<float>(4, 0);
-        transformCur[5] += matX.at<float>(5, 0);
+        //transformCur[4] += matX.at<float>(4, 0);
+        transformCur[5] += matX.at<float>(4, 0);
 
         for(int i=0; i<6; i++){
             if(isnan(transformCur[i]))
@@ -1642,10 +1645,9 @@ public:
                             pow(rad2deg(matX.at<float>(2, 0)), 2));
         float deltaT = sqrt(
                             pow(matX.at<float>(3, 0) * 100, 2) +
-                            pow(matX.at<float>(4, 0) * 100, 2) +
-                            pow(matX.at<float>(5, 0) * 100, 2));
+                            pow(matX.at<float>(4, 0) * 100, 2));
 
-        if (deltaR < 0.01 && deltaT < 0.01) {
+        if (deltaR < 0.01 && deltaT < 0.001) {
             return false;
         }
         return true;
@@ -1717,18 +1719,6 @@ public:
 
         if (laserCloudCornerLastNum < 10 || laserCloudSurfLastNum < 100)
             return;
-        /*
-        for (int iterCount1 = 0; iterCount1 < 25; iterCount1++) { // 25 iterations
-            laserCloudOri->clear();
-            coeffSel->clear();
-
-            findCorrespondingSurfFeatures(iterCount1);
-
-            if (laserCloudOri->points.size() < 10)
-                continue;
-            if (calculateTransformationSurf(iterCount1) == false)
-                break;
-        }*/
 
         pcl::toROSMsg(*laserCloudOri, laserCloudOutMsg);
 	    laserCloudOutMsg.header.stamp = cloudHeader.stamp;
@@ -1744,7 +1734,7 @@ public:
             findCorrespondingCornerFeatures(iterCount2);
             findCorrespondingSurfFeatures(iterCount2);
 
-            printf("%d\n",laserCloudOri->points.size());
+            //printf("%d\n",laserCloudOri->points.size());
 
             if (laserCloudOri->points.size() < 20) // too few features
                 continue;
@@ -1759,7 +1749,6 @@ public:
     }
 
     
-
     void integrateTransformation(){
         float rx, ry, rz, tx, ty, tz;
         AccumulateRotation(transformSum[0], transformSum[1], transformSum[2], 
@@ -1884,8 +1873,8 @@ public:
     {
 
         if (newSegmentedCloud && newSegmentedCloudInfo && newOutlierCloud &&
-            std::abs(timeNewSegmentedCloudInfo - timeNewSegmentedCloud) < 0.05 &&
-            std::abs(timeNewOutlierCloud - timeNewSegmentedCloud) < 0.05){ // in sync
+            std::abs(timeNewSegmentedCloudInfo - timeNewSegmentedCloud) < 0.01 &&
+            std::abs(timeNewOutlierCloud - timeNewSegmentedCloud) < 0.01){ // in sync
 
             newSegmentedCloud = false;
             newSegmentedCloudInfo = false;
