@@ -1609,8 +1609,6 @@ void findCorrespondingCornerFeatures(int iterCount){
         //TODO:
         // prøve ransac med segments
 
-        // prøve og bare kjøre ransac en gang !!!!!
-
         largestInlierSet.reset(new pcl::PointCloud<PointType>()); 
         largestInlierSetCoeffs.reset(new pcl::PointCloud<PointType>());
         smallestEdgeOutlierSet.reset(new pcl::PointCloud<PointType>());
@@ -1618,10 +1616,10 @@ void findCorrespondingCornerFeatures(int iterCount){
         largestEdgeInlierSet.reset(new pcl::PointCloud<PointType>());
         largestSurfInlierSet.reset(new pcl::PointCloud<PointType>());
 
-        double iterCountFactorCorner = 0.08 + (0.25 - 0.08) * (25 - iterCount) / 25.0;
-        double numPointsFactorCorner = 0.25 - (0.25 - 0.08) * (cornerCorrespondences - 10) / 400;
-        if (numPointsFactorCorner < 0.08) {
-            numPointsFactorCorner = 0.08;
+        double iterCountFactorCorner = 0.05 + (0.25 - 0.05) * (25 - iterCount) / 25.0;
+        double numPointsFactorCorner = 0.25 - (0.25 - 0.05) * (cornerCorrespondences - 10) / 400;
+        if (numPointsFactorCorner < 0.05) {
+            numPointsFactorCorner = 0.05;
         }
         
         double iterCountFactorSurf = 0.008 + (0.05 - 0.008) * (25 - iterCount) / 25.0;
@@ -1632,7 +1630,7 @@ void findCorrespondingCornerFeatures(int iterCount){
         }
 
         // Combine the two factors using some weighting, e.g., taking the average
-        double cornerFactor = 0.2*iterCountFactorCorner + 0.8*numPointsFactorCorner;
+        double cornerFactor = 0.3*iterCountFactorCorner + 0.7*numPointsFactorCorner;
         double surfFactor = 0.2*iterCountFactorSurf + 0.6*numPointsFactorSurf + 0.2 * cornerSurfDiffFactor;
         //double cornerFactor = 0.1;
         //double surfFactor = 0.01;
@@ -1642,7 +1640,7 @@ void findCorrespondingCornerFeatures(int iterCount){
         int largestSurfInlierCount = 0;
         float sampleTransform[6];
 
-        for (int i = 0; i < 1000; i++){
+        for (int i = 0; i < 300; i++){
             // Reset sample transform
             for (int p = 0; p < 6; p++) {
                 sampleTransform[p] = transformCur[p];
@@ -2151,7 +2149,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                             pow(matX.at<float>(3, 0) * 100, 2) +
                             pow(matX.at<float>(4, 0) * 100, 2));
             //printf("deltaT: %f\ndeltaR: %f\n",deltaT,deltaR);
-            if (deltaR < 0.01 && deltaT < 0.01) {
+            if (deltaR < 0.05 && deltaT < 0.01) {
                 printf("Odometry converged at iteration %d\n",iterCount);
                 return false;
             }
@@ -2297,25 +2295,6 @@ void findCorrespondingCornerFeatures(int iterCount){
         sensor_msgs::PointCloud2 laserCloudOutMsg;
         if (laserCloudCornerLastNum < 10 || laserCloudSurfLastNum < 100) // SJEKKE FORSKJELL I FEATURES
             return;
-        /*
-        for (int iterCount1 = 0; iterCount1 < 25; iterCount1++) { // 25 iterations
-            laserCloudOri->clear();
-            tripod1Cloud->clear();
-            tripod2Cloud->clear();
-            coeffSel->clear();
-            coeffUnscaledSelEdge->clear();
-
-            findCorrespondingSurfFeatures(iterCount1);
-
-            if (laserCloudOri->points.size() < 10){
-                continue;
-            }
-            else {
-                printf("enough surf features: %d\n",laserCloudOri->points.size());
-            }
-            if (calculateTransformationSurf(iterCount1) == false)
-                break;
-        }*/   
         
         pcl::toROSMsg(*laserCloudOri, laserCloudOutMsg);
 	    laserCloudOutMsg.header.stamp = cloudHeader.stamp;
