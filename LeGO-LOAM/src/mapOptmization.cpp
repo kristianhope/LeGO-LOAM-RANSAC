@@ -1166,7 +1166,7 @@ public:
 
                     float ld2 = a012 / l12;
 
-                    float s = 1 - 1.8 * fabs(ld2);
+                    float s = 1 - 3.6 * fabs(ld2)*pow(1.1,iterCount);
 
                     coeff.x = s * la;
                     coeff.y = s * lb;
@@ -1218,7 +1218,7 @@ public:
                 if (planeValid) {
                     float pd2 = pa * pointSel.x + pb * pointSel.y + pc * pointSel.z + pd;
 
-                    float s = 1 - 1.8 * fabs(pd2) / sqrt(sqrt(pointSel.x * pointSel.x //0
+                    float s = 1 - 3.6 * fabs(pd2) * pow(1.1,iterCount)/ sqrt(sqrt(pointSel.x * pointSel.x //0
                             + pointSel.y * pointSel.y + pointSel.z * pointSel.z));
 
                     coeff.x = s * pa;

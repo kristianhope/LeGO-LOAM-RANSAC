@@ -759,7 +759,7 @@ public:
                         cloudCurvature[ind] > edgeThreshold) { // is not ground point
                     
                         largestPickedNum++;
-                        if (largestPickedNum <= 2) { // Only pick the 2 sharpest features
+                        if (largestPickedNum <= 5) { // Only pick the 2 sharpest features
                             cloudLabel[ind] = 2;
                             cornerPointsSharp->push_back(segmentedCloud->points[ind]);
                             cornerPointsLessSharp->push_back(segmentedCloud->points[ind]);
@@ -914,7 +914,7 @@ public:
     void TransformToEnd(PointType const * const pi, PointType * const po)
     {
         // interpolation coefficient calculation
-        float s = 10 * (pi->intensity - int(pi->intensity));
+        float s = 20 * (pi->intensity - int(pi->intensity));
 
         /********************************************************************************
         Ry*Rx*Rz*Pl, transform point to the global frame
@@ -1183,7 +1183,7 @@ public:
 
                 float s = 1;
                 if (iterCount >= 5) {
-                    s = 1 - 3.6*(pow(1.5,iterCount)) * fabs(ld2);
+                    s = 1 - 3.6*(pow(1.25,iterCount)) * fabs(ld2);
                 } // If ld2 = 0.5 --> s = 1 - 0.9 = 0.1
                 // Reduce to 0.25 since 20 Hz
                 // factor 1.8 --> 3.6
@@ -1648,6 +1648,9 @@ public:
                             pow(matX.at<float>(4, 0) * 100, 2));
 
         if (deltaR < 0.01 && deltaT < 0.001) {
+            printf("Converged at iterCount: %d\n", iterCount);
+            printf("deltaR: %f, deltaT: %f\n", deltaR, deltaT);
+
             return false;
         }
         return true;
@@ -1731,12 +1734,12 @@ public:
 
             //printf("%d\n",laserCloudOri->points.size());
 
-            if (laserCloudOri->points.size() < 20) // too few features
+            if (laserCloudOri->points.size() < 10) // too few features
                 continue;
             if (calculateTransformation(iterCount2) == false)
                 break;
         }
-        
+        printf("LaserCloudOri: %d\n",laserCloudOri->points.size());
         pcl::toROSMsg(*laserCloudOri, laserCloudOutMsg);
 	    laserCloudOutMsg.header.stamp = cloudHeader.stamp;
 	    laserCloudOutMsg.header.frame_id = "camera";
