@@ -210,7 +210,6 @@ private:
     ros::Publisher pubLaserOdometry;
     ros::Publisher pubOutlierCloudLast;
 
-    ros::Publisher poseMAPublisher;
     ros::Publisher posePublisher;
 
     int skipFrameNum;
@@ -234,7 +233,6 @@ private:
 
     int bufferSize = 3;
     std::vector<std::vector<float>> transformCurBuffer;
-    float transformCurMA[6];
 
     float transformSum[6];
 
@@ -251,6 +249,7 @@ private:
     pcl::PointCloud<PointType>::Ptr coeffSel;
     pcl::PointCloud<PointType>::Ptr coeffUnscaledSelEdge;
     pcl::PointCloud<PointType>::Ptr coeffUnscaledSelSurf;
+    pcl::PointCloud<PointType>::Ptr coeffUnscaledSel;
     pcl::PointCloud<PointType>::Ptr largestInlierSet;
     pcl::PointCloud<PointType>::Ptr largestInlierSetCoeffs;
     pcl::PointCloud<PointType>::Ptr smallestEdgeOutlierSet;
@@ -316,7 +315,6 @@ public:
         pubOutlierCloudLast = nh.advertise<sensor_msgs::PointCloud2>("/outlier_cloud_last", 2);
         pubLaserOdometry = nh.advertise<nav_msgs::Odometry> ("/laser_odom_to_init", 5);
 
-        poseMAPublisher = nh.advertise<geometry_msgs::Pose>("transform_cur_ma_topic", 10);
         posePublisher = nh.advertise<geometry_msgs::Pose>("transform_cur_topic", 10);
         
         initializationValue();
@@ -405,7 +403,6 @@ public:
 
         for (int i = 0; i < 6; ++i){
             transformCur[i] = 0;
-            transformCurMA[i] = 0;
             transformSum[i] = 0;
         }
 
@@ -424,6 +421,7 @@ public:
         coeffSel.reset(new pcl::PointCloud<PointType>());
         coeffUnscaledSelEdge.reset(new pcl::PointCloud<PointType>());
         coeffUnscaledSelSurf.reset(new pcl::PointCloud<PointType>());
+        coeffUnscaledSel.reset(new pcl::PointCloud<PointType>());
         largestInlierSet.reset(new pcl::PointCloud<PointType>());
         largestInlierSetCoeffs.reset(new pcl::PointCloud<PointType>());
         smallestEdgeOutlierSet.reset(new pcl::PointCloud<PointType>());
@@ -1020,45 +1018,12 @@ public:
         po->intensity = pi->intensity;
     }
 
-    void TransformToStartMA(PointType const * const pi, PointType * const po)
-    {
-        // interpolation coefficient calculation
-        // point.intensity = int(segmentedCloud->points[i].intensity) + scanPeriod * relTime;
-        // Change to 20 of 20 Hz? 1/s * s
-        float s = 10 * (pi->intensity - int(pi->intensity)); //The relative time is in the decimal part of intensity
-
-        /********************************************************************************
-        Ry*Rx*Rz*Pl, transform point to the global frame
-        *********************************************************************************/
-        float rx = s * transformCurMA[0];
-        float ry = s * transformCurMA[1];
-        float rz = s * transformCurMA[2];
-        float tx = s * transformCurMA[3];
-        float ty = s * transformCurMA[4];
-        float tz = s * transformCurMA[5];
-        
-        // z-x-y rotation 
-        // Rotate around z-axis and translate
-        float x1 = cos(rz) * (pi->x - tx) + sin(rz) * (pi->y - ty);
-        float y1 = -sin(rz) * (pi->x - tx) + cos(rz) * (pi->y - ty);
-        float z1 = (pi->z - tz);
-
-        // Rotate around x-axis
-        float x2 = x1;
-        float y2 = cos(rx) * y1 + sin(rx) * z1;
-        float z2 = -sin(rx) * y1 + cos(rx) * z1;
-
-        // Rotate around y-axis
-        po->x = cos(ry) * x2 - sin(ry) * z2;
-        po->y = y2;
-        po->z = sin(ry) * x2 + cos(ry) * z2;
-        po->intensity = pi->intensity;
-    }
+    
 
     void TransformToEnd(PointType const * const pi, PointType * const po)
     {
         // interpolation coefficient calculation
-        float s = 10 * (pi->intensity - int(pi->intensity));
+        float s = 20 * (pi->intensity - int(pi->intensity));
 
         /********************************************************************************
         Ry*Rx*Rz*Pl, transform point to the global frame
@@ -1332,6 +1297,13 @@ public:
                     tripod2Cloud->push_back(tripod2);
                     tripod3Cloud->push_back(tripod3);
                     coeffSel->push_back(coeff);
+
+                    PointType coeffUnscaled;
+                    coeffUnscaled.x = pa; 
+                    coeffUnscaled.y = pb;
+                    coeffUnscaled.z = pc;
+                    coeffUnscaled.intensity = pd2;
+                    coeffUnscaledSel->push_back(coeffUnscaled);
                 }
                 PointType coeffUnscaled;
                 coeffUnscaled.x = pointSel.x; 
@@ -1471,10 +1443,6 @@ void findCorrespondingCornerFeatures(int iterCount){
             
             // Transform to t_k+1 so that the point is in the frame of the last cloud
             // The transformation will be updated every iteration, therefore we need to find new correspondences as the transformation gets better
-            /*
-            if (iterCount == 0){
-                TransformToStartMA(&cornerPointsSharp->points[i], &pointSel);
-            }*/
             
             TransformToStart(&cornerPointsSharp->points[i], &pointSel);
             
@@ -1584,6 +1552,13 @@ void findCorrespondingCornerFeatures(int iterCount){
                     coeffSel->push_back(coeff);
                     tripod1Cloud->push_back(tripod1);
                     tripod2Cloud->push_back(tripod2);
+
+                    PointType coeffUnscaled;
+                    coeffUnscaled.x = la; 
+                    coeffUnscaled.y = lb;
+                    coeffUnscaled.z = lc;
+                    coeffUnscaled.intensity = ld2;
+                    coeffUnscaledSel->push_back(coeffUnscaled);
                 }
                 PointType coeffUnscaled;
                 coeffUnscaled.x = x0; 
@@ -1640,7 +1615,7 @@ void findCorrespondingCornerFeatures(int iterCount){
         int largestSurfInlierCount = 0;
         float sampleTransform[6];
 
-        for (int i = 0; i < 300; i++){
+        for (int i = 0; i < 500; i++){
             // Reset sample transform
             for (int p = 0; p < 6; p++) {
                 sampleTransform[p] = transformCur[p];
@@ -1661,11 +1636,11 @@ void findCorrespondingCornerFeatures(int iterCount){
             // Populate point clouds
             for (int index : selectedIndices) {
                 ransacSamples->push_back(laserCloudOri->points[index]);
-                ransacCoeffs->push_back(coeffUnscaledSelEdge->points[index]);
+                ransacCoeffs->push_back(coeffUnscaledSel->points[index]);
             }
 
             // Optimize transformation for sample 
-            for (int iter = 0; iter < 30; iter++) {
+            for (int iter = 0; iter < 25; iter++) {
 
             cv::Mat matA(sampleNum, 5, CV_32F, cv::Scalar::all(0));
             cv::Mat matAt(5, sampleNum, CV_32F, cv::Scalar::all(0));
@@ -1786,7 +1761,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                             pow(matX.at<float>(3, 0) * 100, 2) +
                             pow(matX.at<float>(4, 0) * 100, 2));
             //printf("deltaT: %f\ndeltaR: %f\n",deltaT,deltaR);
-            if (deltaR < 0.1 && deltaT < 0.001) {
+            if (deltaR < 0.01 && deltaT < 0.001) {
                 //printf("Ransac iteration converged at iteration %d\n",iterCount);
                 break;
             }
@@ -1826,8 +1801,26 @@ void findCorrespondingCornerFeatures(int iterCount){
                     tripod1 = tripod1Cloud->points[indexInLaserCloudOri];
                     tripod2 = tripod2Cloud->points[indexInLaserCloudOri];
                     tripod3 = tripod3Cloud->points[indexInLaserCloudOri];
-                    float pl2 = pointToPlaneDist(transformedPoint, tripod1, tripod2, tripod3);
-                    ransacCoeffs->points[i].intensity = pl2;
+                    float pa = (tripod2.y - tripod1.y) * (tripod3.z - tripod1.z) 
+                         - (tripod3.y - tripod1.y) * (tripod2.z - tripod1.z);
+                    float pb = (tripod2.z - tripod1.z) * (tripod3.x - tripod1.x) 
+                                - (tripod3.z - tripod1.z) * (tripod2.x - tripod1.x);
+                    float pc = (tripod2.x - tripod1.x) * (tripod3.y - tripod1.y) 
+                                - (tripod3.x - tripod1.x) * (tripod2.y - tripod1.y);
+                    float pd = -(pa * tripod1.x + pb * tripod1.y + pc * tripod1.z);
+
+                    float ps = sqrt(pa * pa + pb * pb + pc * pc);
+
+                    pa /= ps;
+                    pb /= ps;
+                    pc /= ps;
+                    pd /= ps;
+
+                    float pd2 = pa * transformedPoint.x + pb * transformedPoint.y + pc * transformedPoint.z + pd;
+                    ransacCoeffs->points[i].x = pa;
+                    ransacCoeffs->points[i].y = pb;
+                    ransacCoeffs->points[i].z = pc;
+                    ransacCoeffs->points[i].intensity = pd2;
                 }
                 //Point is an edge feature
                 else {
@@ -1838,7 +1831,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                     float tx = s * sampleTransform[3];
                     float ty = s * sampleTransform[4];
                     float tz = s * sampleTransform[5];
-
+                    {
                     // z-x-y rotation 
                     // Rotate around z-axis and translate
                     float x1 = cos(rz) * (point.x - tx) + sin(rz) * (point.y - ty);
@@ -1853,11 +1846,41 @@ void findCorrespondingCornerFeatures(int iterCount){
                     transformedPoint.y = y2;
                     transformedPoint.z = sin(ry) * x2 + cos(ry) * z2;
                     transformedPoint.intensity = point.intensity;
+                    }
 
                     // calculate new point to line distance
                     tripod1 = tripod1Cloud->points[indexInLaserCloudOri];
                     tripod2 = tripod2Cloud->points[indexInLaserCloudOri];
-                    float ld2 = pointToLineDist(transformedPoint, tripod1, tripod2);
+                    float x0 = transformedPoint.x;
+                    float y0 = transformedPoint.y;
+                    float z0 = transformedPoint.z;
+                    float x1 = tripod1.x;
+                    float y1 = tripod1.y;
+                    float z1 = tripod1.z;
+                    float x2 = tripod2.x;
+                    float y2 = tripod2.y;
+                    float z2 = tripod2.z;
+
+                    // Cross products
+                    float m11 = ((x0 - x1)*(y0 - y2) - (x0 - x2)*(y0 - y1));
+                    float m22 = ((x0 - x1)*(z0 - z2) - (x0 - x2)*(z0 - z1));
+                    float m33 = ((y0 - y1)*(z0 - z2) - (y0 - y2)*(z0 - z1));
+
+                    // Line length
+                    float a012 = sqrt(m11 * m11  + m22 * m22 + m33 * m33);
+
+                    // distance between the two points
+                    float l12 = sqrt((x1 - x2)*(x1 - x2) + (y1 - y2)*(y1 - y2) + (z1 - z2)*(z1 - z2));
+                    
+                    // Calculate jacobian
+                    float la =  ((y1 - y2)*m11 + (z1 - z2)*m22) / a012 / l12;
+                    float lb = -((x1 - x2)*m11 - (z1 - z2)*m33) / a012 / l12;
+                    float lc = -((x1 - x2)*m22 + (y1 - y2)*m33) / a012 / l12;
+
+                    float ld2 = a012 / l12; // point to line distance after optimization
+                    ransacCoeffs->points[i].x = la;
+                    ransacCoeffs->points[i].y = lb;
+                    ransacCoeffs->points[i].z = lc;
                     ransacCoeffs->points[i].intensity = ld2;
                 }
             }
@@ -1910,8 +1933,8 @@ void findCorrespondingCornerFeatures(int iterCount){
                 tripod2 = tripod2Cloud->points[k];
                 tripod3 = tripod3Cloud->points[k];
                 float pl2 = pointToPlaneDist(transformedPoint, tripod1, tripod2, tripod3);
-
-                if (fabs(pl2) < surfFactor) {
+                float c = 1 - 3.6 * fabs(pl2)*pow(2.0,iterCount); // Only keep points with small p2l distances, small p2l --> s close to 1
+                if (c > 0.1) {
                     surfInlierCount += 1;
                     inlierCloud.push_back(point);
                     inlierCoeff.push_back(coeff);
@@ -1957,8 +1980,8 @@ void findCorrespondingCornerFeatures(int iterCount){
                 tripod2 = tripod2Cloud->points[k];
                 float ld2 = pointToLineDist(transformedPoint, tripod1, tripod2);
 
-                p2l.push_back(ld2);
-                if (fabs(ld2) < cornerFactor) {
+                float c = 1 - 3.6 * fabs(ld2)*pow(2.0,iterCount); // Only keep points with small p2l distances, small p2l --> s close to 1
+                if (c > 0.1) {
                     cornerInlierCount += 1;
                     inlierCloud.push_back(point);
                     inlierCoeff.push_back(coeff);
@@ -1994,7 +2017,7 @@ void findCorrespondingCornerFeatures(int iterCount){
         printf("Surf inliers: %d/%d\n",largestSurfInlierCount,surfCorrespondences);
         printf("Inliers : %d/%d \n", inlierSetSize,pointSelNum);
         printf("\n");
-        }
+        
 
         sensor_msgs::PointCloud2 laserCloudOutMsg;
 
@@ -2028,9 +2051,9 @@ void findCorrespondingCornerFeatures(int iterCount){
         laserCloudOutMsg.header.stamp = cloudHeader.stamp;
         laserCloudOutMsg.header.frame_id = "camera";
         pubSurfInlierCloud.publish(laserCloudOutMsg);
-
+        }
         
-        if (inlierSetSize > 0.4*pointSelNum || inlierSetSize > 100) {
+        if (inlierSetSize > 20) {
             // Solve least squares problem with inliers
             cv::Mat matA(inlierSetSize, 5, CV_32F, cv::Scalar::all(0));
             cv::Mat matAt(5, inlierSetSize, CV_32F, cv::Scalar::all(0));
@@ -2149,8 +2172,41 @@ void findCorrespondingCornerFeatures(int iterCount){
                             pow(matX.at<float>(3, 0) * 100, 2) +
                             pow(matX.at<float>(4, 0) * 100, 2));
             //printf("deltaT: %f\ndeltaR: %f\n",deltaT,deltaR);
-            if (deltaR < 0.05 && deltaT < 0.01) {
+            if (deltaR < 0.005 && deltaT < 0.001) {
                 printf("Odometry converged at iteration %d\n",iterCount);
+
+                sensor_msgs::PointCloud2 laserCloudOutMsg;
+
+                pcl::toROSMsg(*ransacSamples, laserCloudOutMsg);
+                laserCloudOutMsg.header.stamp = cloudHeader.stamp;
+                laserCloudOutMsg.header.frame_id = "camera";
+                pubRansacCloud.publish(laserCloudOutMsg);
+
+                pcl::toROSMsg(*largestInlierSet, laserCloudOutMsg);
+                laserCloudOutMsg.header.stamp = cloudHeader.stamp;
+                laserCloudOutMsg.header.frame_id = "camera";
+                pubInlierCloud.publish(laserCloudOutMsg);
+
+                pcl::toROSMsg(*smallestEdgeOutlierSet, laserCloudOutMsg);
+                laserCloudOutMsg.header.stamp = cloudHeader.stamp;
+                laserCloudOutMsg.header.frame_id = "camera";
+                pubEdgeOutlierCloud.publish(laserCloudOutMsg);
+
+                pcl::toROSMsg(*smallestSurfOutlierSet, laserCloudOutMsg);
+                laserCloudOutMsg.header.stamp = cloudHeader.stamp;
+                laserCloudOutMsg.header.frame_id = "camera";
+                pubSurfOutlierCloud.publish(laserCloudOutMsg);
+
+                // publish edge inliers and surf inliers as above
+                pcl::toROSMsg(*largestEdgeInlierSet, laserCloudOutMsg);
+                laserCloudOutMsg.header.stamp = cloudHeader.stamp;
+                laserCloudOutMsg.header.frame_id = "camera";
+                pubEdgeInlierCloud.publish(laserCloudOutMsg);
+
+                pcl::toROSMsg(*largestSurfInlierSet, laserCloudOutMsg);
+                laserCloudOutMsg.header.stamp = cloudHeader.stamp;
+                laserCloudOutMsg.header.frame_id = "camera";
+                pubSurfInlierCloud.publish(laserCloudOutMsg);
                 return false;
             }
         }
@@ -2281,7 +2337,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                             pow(matX.at<float>(3, 0) * 100, 2) +
                             pow(matX.at<float>(4, 0) * 100, 2));
             //printf("deltaT: %f\ndeltaR: %f\n",deltaT,deltaR);
-            if (deltaR < 0.01 && deltaT < 0.01) {
+            if (deltaR < 0.01 && deltaT < 0.001) {
                 printf("Converged\n");
                 return false;
             }
@@ -2310,6 +2366,7 @@ void findCorrespondingCornerFeatures(int iterCount){
             coeffSel->clear();
             coeffUnscaledSelEdge->clear();
             coeffUnscaledSelSurf->clear();
+            coeffUnscaledSel->clear();
             largestInlierSet->clear();
             largestInlierSetCoeffs->clear();
             //ransacSamples->clear();
@@ -2351,40 +2408,6 @@ void findCorrespondingCornerFeatures(int iterCount){
 	    laserCloudOutMsg.header.frame_id = "camera";
 	    pubTriPod2.publish(laserCloudOutMsg);
 
-        // Update MA
-        float bufferSizePrev = transformCurBuffer.size();
-        std::vector<float> newTransform(transformCur, transformCur + 6);
-        transformCurBuffer.push_back(newTransform);
-        if (transformCurBuffer.size() > bufferSize){
-            // Erase first element from buffer
-            std::vector<float> oldestTransform = transformCurBuffer.front();
-            transformCurBuffer.erase(transformCurBuffer.begin());
-
-            for (int i = 0; i < 6; i++) {
-            // Update the moving average
-            transformCurMA[i] = transformCurMA[i] + (newTransform[i] - oldestTransform[i]) / bufferSize;
-            }
-        }
-        else {
-            
-            for (int i = 0; i < 6; i++) {
-            // Update the moving average
-            transformCurMA[i] = (transformCurMA[i]*bufferSizePrev + newTransform[i]) / (bufferSizePrev + 1);
-            }
-        }
-        //printf("MA x: %f\n", transformCurMA[3]);
-        //printf("   x: %f\n", transformCur[3]);
-
-        geometry_msgs::Pose poseMAMsg;
-        poseMAMsg.position.x = transformCurMA[3];
-        poseMAMsg.position.y = transformCurMA[4];
-        poseMAMsg.position.z = transformCurMA[5];
-        poseMAPublisher.publish(poseMAMsg);
-        geometry_msgs::Pose poseMsg;
-        poseMsg.position.x = transformCur[3];
-        poseMsg.position.y = transformCur[4];
-        poseMsg.position.z = transformCur[5];
-        posePublisher.publish(poseMsg);
     }
 
     void checkSystemInitialization(){
