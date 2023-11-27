@@ -1088,7 +1088,7 @@ public:
             // The transformation will be updated every iteration, therefore we need to find new correspondences as the transformation gets better
             TransformToStart(&cornerPointsSharp->points[i], &pointSel);
 
-            if (iterCount % 5 == 0) {
+            if (iterCount % 3 == 0) {
                 // Every 5 iteration re-find the closest points
                 kdtreeCornerLast->nearestKSearch(pointSel, 1, pointSearchInd, pointSearchSqDis);
                 int closestPointInd = -1, minPointInd2 = -1;
@@ -1183,7 +1183,7 @@ public:
 
                 float s = 1;
                 if (iterCount >= 5) {
-                    s = 1 - 3.6 * fabs(ld2); // Only keep points with small p2l distances, small p2l --> s close to 1
+                    s = 1 - 3.6*(pow(1.5,iterCount)) * fabs(ld2);
                 } // If ld2 = 0.5 --> s = 1 - 0.9 = 0.1
                 // Reduce to 0.25 since 20 Hz
                 // factor 1.8 --> 3.6
@@ -1209,7 +1209,7 @@ public:
 
             TransformToStart(&surfPointsFlat->points[i], &pointSel);
 
-            if (iterCount % 5 == 0) {
+            if (iterCount % 3 == 0) {
 
                 kdtreeSurfLast->nearestKSearch(pointSel, 1, pointSearchInd, pointSearchSqDis);
                 int closestPointInd = -1, minPointInd2 = -1, minPointInd3 = -1;
@@ -1299,7 +1299,7 @@ public:
 
                 float s = 1;
                 if (iterCount >= 5) {
-                    s = 1 - 3.6 * fabs(pd2) / sqrt(sqrt(pointSel.x * pointSel.x
+                    s = 1 - 3.6*(pow(1.5,iterCount)) * fabs(pd2) / sqrt(sqrt(pointSel.x * pointSel.x
                             + pointSel.y * pointSel.y + pointSel.z * pointSel.z));
                 }
 
@@ -1719,11 +1719,6 @@ public:
 
         if (laserCloudCornerLastNum < 10 || laserCloudSurfLastNum < 100)
             return;
-
-        pcl::toROSMsg(*laserCloudOri, laserCloudOutMsg);
-	    laserCloudOutMsg.header.stamp = cloudHeader.stamp;
-	    laserCloudOutMsg.header.frame_id = "camera";
-	    pubSurfPointsOdom.publish(laserCloudOutMsg);
 
 
         for (int iterCount2 = 0; iterCount2 < 25; iterCount2++) {

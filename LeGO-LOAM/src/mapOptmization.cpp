@@ -871,7 +871,6 @@ public:
         }
 
         return true;
-        printf("loop detected");
     }
 
 
@@ -885,6 +884,7 @@ public:
             if (detectLoopClosure() == true){
                 potentialLoopFlag = true; // find some key frames that is old enough or close enough for loop closure
                 timeSaveFirstCurrentScanForLoopClosure = timeLaserOdometry;
+                printf("Loop closure detected\n");
             }
             if (potentialLoopFlag == false)
                 return;
