@@ -1612,7 +1612,7 @@ void findCorrespondingCornerFeatures(int iterCount){
         int largestSurfInlierCount = 0;
         float sampleTransform[6];
 
-        for (int i = 0; i < 5; i++){
+        for (int i = 0; i < 1000; i++){
             // Reset sample transform
             for (int p = 0; p < 6; p++) {
                 sampleTransform[p] = transformCur[p];
@@ -1707,11 +1707,13 @@ void findCorrespondingCornerFeatures(int iterCount){
                 matAtB = matAt * matB;
                 cv::solve(matAtA, matAtB, matX, cv::DECOMP_QR);
 
+                cv::Mat matP(5, 5, CV_32F, cv::Scalar::all(0));
                 // Degeneracy check
                 if (iter == 0) {
                     cv::Mat matE(1, 5, CV_32F, cv::Scalar::all(0));
                     cv::Mat matV(5, 5, CV_32F, cv::Scalar::all(0));
                     cv::Mat matV2(5, 5, CV_32F, cv::Scalar::all(0));
+                    
 
                     cv::eigen(matAtA, matE, matV);
                     matV.copyTo(matV2);
@@ -1931,9 +1933,8 @@ void findCorrespondingCornerFeatures(int iterCount){
                 tripod2 = tripod2Cloud->points[k];
                 tripod3 = tripod3Cloud->points[k];
                 float pl2 = pointToPlaneDist(transformedPoint, tripod1, tripod2, tripod3);
-                float c = 1 - 3.6 * fabs(pl2)/sqrt(sqrt(transformedPoint.x * transformedPoint.x
-                            + transformedPoint.y * transformedPoint.y + transformedPoint.z * transformedPoint.z)); // Only keep points with small p2l distances, small p2l --> s close to 1
-                if (c > 0) {
+                float c = 1 - 3.6 * pow(1.25,iterCount)* fabs(pl2); // Only keep points with small p2l distances, small p2l --> s close to 1
+                if (fabs(pl2) < 0.05) {
                     surfInlierCount += 1;
                     inlierCloud.push_back(point);
                     inlierCoeff.push_back(coeff);
@@ -1979,8 +1980,8 @@ void findCorrespondingCornerFeatures(int iterCount){
                 tripod2 = tripod2Cloud->points[k];
                 float ld2 = pointToLineDist(transformedPoint, tripod1, tripod2);
 
-                float c = 1 - 3.6 * fabs(ld2); // Only keep points with small p2l distances, small p2l --> s close to 1
-                if (c > -10) {
+                float c = 1 - 3.6 * pow(1.10,iterCount) *fabs(ld2); // Only keep points with small p2l distances, small p2l --> s close to 1
+                if (fabs(ld2) < 0.15) {
                     cornerInlierCount += 1;
                     inlierCloud.push_back(point);
                     inlierCoeff.push_back(coeff);
@@ -2009,7 +2010,7 @@ void findCorrespondingCornerFeatures(int iterCount){
 
         int inlierSetSize = largestInlierSet->points.size();
 
-        if (iterCount % 1 == 0){
+        if (iterCount % 5 == 0){
         printf("Iter: %d \n", iterCount);
         printf("Surf limit: %f\n",surfFactor);
         printf("Corner limit: %f\n",cornerFactor);

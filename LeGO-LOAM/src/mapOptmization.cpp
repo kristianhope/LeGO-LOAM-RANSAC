@@ -1263,7 +1263,7 @@ public:
                     coeff.intensity = s * pd2;
 
                     if (s > 0.1) {
-                        pointOri.intensity = pd2;
+                        pointOri.intensity = fabs(pd2);
                         laserCloudOri->push_back(pointOri);
                         coeffSel->push_back(coeff);
                     }
@@ -1496,12 +1496,13 @@ public:
 
                 cornerOptimization(iterCount); // find new points
                 // PUBLISH FEATURES USED IN MAPPING
+
+                surfOptimization(iterCount);
+
                 pcl::toROSMsg(*laserCloudOri, cloudMsgTemp);
                 cloudMsgTemp.header.stamp = ros::Time().fromSec(timeLaserOdometry);
                 cloudMsgTemp.header.frame_id = "camera";
                 pubCornerPointsMap.publish(cloudMsgTemp);
-
-                surfOptimization(iterCount);
 
                 if (LMOptimization(iterCount) == true)
                     break;              
