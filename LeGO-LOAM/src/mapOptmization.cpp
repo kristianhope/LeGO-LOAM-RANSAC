@@ -1397,7 +1397,7 @@ public:
         {
             pointOri = laserCloudOri->points[i];
             coeff = coeffSel->points[i];
-            //距离求导公式.可以看之前paperReading推到的公式.一模一样.
+            
             float arx = (crx*sry*srz*pointOri.x + crx*crz*sry*pointOri.y - srx*sry*pointOri.z)*coeff.x
                         + (-srx*srz*pointOri.x - crz*srx*pointOri.y - crx*pointOri.z)*coeff.y
                         + (crx*cry*srz*pointOri.x + crx*cry*crz*pointOri.y - cry*srx*pointOri.z)*coeff.z;
@@ -1428,9 +1428,9 @@ public:
 
         if (iterCount == 0)
         {
-            //特征值1*6矩阵
+            
             cv::Mat matE(1, 6, CV_32F, cv::Scalar::all(0));
-            //特征向量6*6矩阵
+            
             cv::Mat matV(6, 6, CV_32F, cv::Scalar::all(0));
             cv::Mat matV2(6, 6, CV_32F, cv::Scalar::all(0));
 
@@ -1441,11 +1441,11 @@ public:
             isDegenerate = false;
             float eignThre[6] = {100, 100, 100, 100, 100, 100};
             for (int i = 5; i >= 0; i--)
-            { //从小到大查找
+            { 
                 if (matE.at<float>(0, i) < eignThre[i])
-                { //特征值太小，则认为处在兼并环境中，发生了退化
+                { 
                     for (int j = 0; j < 6; j++)
-                    { //对应的特征向量置为0
+                    { 
                         matV2.at<float>(i, j) = 0;
                     }
                     isDegenerate = true;
@@ -1455,17 +1455,17 @@ public:
                     break;
                 }
             }
-            //计算P矩阵
+            
             matP = matV.inv()*matV2;
         }
 
         if (isDegenerate)
-        {//如果发生退化，只使用预测矩阵P计算
+        {
             cv::Mat matX2(6, 1, CV_32F, cv::Scalar::all(0));
             matX.copyTo(matX2);
             matX = matP*matX2;
         }
-        //积累每次的调整量
+        
         transformTobeMapped[0] += matX.at<float>(0, 0);
         transformTobeMapped[1] += matX.at<float>(1, 0);
         transformTobeMapped[2] += matX.at<float>(2, 0);
@@ -1481,7 +1481,7 @@ public:
                 pow(matX.at<float>(3, 0)*100, 2) +
                 pow(matX.at<float>(4, 0)*100, 2) +
                 pow(matX.at<float>(5, 0)*100, 2));
-        //旋转平移量足够小就停止迭代
+        
         if (deltaR < 0.05 && deltaT < 0.05)
         {
             return true;

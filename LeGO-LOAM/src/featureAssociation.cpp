@@ -2175,7 +2175,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                             pow(matX.at<float>(3, 0) * 100, 2) +
                             pow(matX.at<float>(4, 0) * 100, 2));
             //printf("deltaT: %f\ndeltaR: %f\n",deltaT,deltaR);
-            if (deltaR < 0.005 && deltaT < 0.001) {
+            if (deltaR < 0.05 && deltaT < 0.01) {
                 printf("Odometry converged at iteration %d\n",iterCount);
 
                 sensor_msgs::PointCloud2 laserCloudOutMsg;
@@ -2340,7 +2340,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                             pow(matX.at<float>(3, 0) * 100, 2) +
                             pow(matX.at<float>(4, 0) * 100, 2));
             //printf("deltaT: %f\ndeltaR: %f\n",deltaT,deltaR);
-            if (deltaR < 0.01 && deltaT < 0.001) {
+            if (deltaR < 0.01 && deltaT < 0.01) {
                 printf("Converged\n");
                 return false;
             }
@@ -2385,7 +2385,7 @@ void findCorrespondingCornerFeatures(int iterCount){
             cornerCorrespondences = laserCloudOri->points.size() - surfCorrespondences;
             //printf("corner size: %d\n",cornerCorrespondences);
             
-            if (laserCloudOri->points.size() < 20){
+            if (laserCloudOri->points.size() < 10){
                 printf("Too few corresponding features\n");
                 continue;
             }
