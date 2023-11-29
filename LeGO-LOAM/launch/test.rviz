@@ -533,8 +533,8 @@ Visualization Manager:
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 22.132966995239258
-        Min Value: -35.86956024169922
+        Max Value: 22.870357513427734
+        Min Value: -34.9847412109375
         Value: true
       Axis: Z
       Channel Name: intensity
@@ -830,13 +830,13 @@ Visualization Manager:
       Value: false
     - Alpha: 1
       Class: rviz/Axes
-      Enabled: true
+      Enabled: false
       Length: 1
       Name: Laser Odom
       Radius: 0.5
       Reference Frame: laser_odom
       Show Trail: false
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -895,13 +895,13 @@ Visualization Manager:
       Value: false
     - Alpha: 1
       Class: rviz/Axes
-      Enabled: true
+      Enabled: false
       Length: 1
       Name: Mapped
       Radius: 0.5
       Reference Frame: aft_mapped
       Show Trail: false
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
