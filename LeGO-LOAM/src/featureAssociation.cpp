@@ -1623,9 +1623,13 @@ void findCorrespondingCornerFeatures(int iterCount){
 
             // Sample random indices
             std::vector<int> selectedIndices;
+            std::random_device rd;
+            std::mt19937 gen(rd());
+            std::uniform_int_distribution<> dis(0, pointSelNum - 1);
+
             while (selectedIndices.size() < sampleNum) {
-                int index = std::rand() % pointSelNum;
-                if (std::find(selectedIndices.begin(), selectedIndices.end(), index) == selectedIndices.end()) { // find return last element if not found
+                int index = dis(gen);
+                if (std::find(selectedIndices.begin(), selectedIndices.end(), index) == selectedIndices.end()) {
                     selectedIndices.push_back(index);
                 }
             }
@@ -1642,248 +1646,245 @@ void findCorrespondingCornerFeatures(int iterCount){
             // Optimize transformation for sample 
             for (int iter = 0; iter < 25; iter++) {
 
-            cv::Mat matA(sampleNum, 5, CV_32F, cv::Scalar::all(0));
-            cv::Mat matAt(5, sampleNum, CV_32F, cv::Scalar::all(0));
-            cv::Mat matAtA(5, 5, CV_32F, cv::Scalar::all(0));
-            cv::Mat matB(sampleNum, 1, CV_32F, cv::Scalar::all(0));
-            cv::Mat matAtB(5, 1, CV_32F, cv::Scalar::all(0));
-            cv::Mat matX(5, 1, CV_32F, cv::Scalar::all(0));
+                cv::Mat matA(sampleNum, 5, CV_32F, cv::Scalar::all(0));
+                cv::Mat matAt(5, sampleNum, CV_32F, cv::Scalar::all(0));
+                cv::Mat matAtA(5, 5, CV_32F, cv::Scalar::all(0));
+                cv::Mat matB(sampleNum, 1, CV_32F, cv::Scalar::all(0));
+                cv::Mat matAtB(5, 1, CV_32F, cv::Scalar::all(0));
+                cv::Mat matX(5, 1, CV_32F, cv::Scalar::all(0));
 
-            float srx = sin(sampleTransform[0]);
-            float crx = cos(sampleTransform[0]);
-            float sry = sin(sampleTransform[1]);
-            float cry = cos(sampleTransform[1]);
-            float srz = sin(sampleTransform[2]);
-            float crz = cos(sampleTransform[2]);
-            float tx = sampleTransform[3];
-            float ty = sampleTransform[4];
-            float tz = sampleTransform[5];
+                float srx = sin(sampleTransform[0]);
+                float crx = cos(sampleTransform[0]);
+                float sry = sin(sampleTransform[1]);
+                float cry = cos(sampleTransform[1]);
+                float srz = sin(sampleTransform[2]);
+                float crz = cos(sampleTransform[2]);
+                float tx = sampleTransform[3];
+                float ty = sampleTransform[4];
+                float tz = sampleTransform[5];
 
-            float a1 = crx*sry*srz; float a2 = crx*crz*sry; float a3 = srx*sry; float a4 = tx*a1 - ty*a2 - tz*a3;
-            float a5 = srx*srz; float a6 = crz*srx; float a7 = ty*a6 - tz*crx - tx*a5;
-            float a8 = crx*cry*srz; float a9 = crx*cry*crz; float a10 = cry*srx; float a11 = tz*a10 + ty*a9 - tx*a8;
+                float a1 = crx*sry*srz; float a2 = crx*crz*sry; float a3 = srx*sry; float a4 = tx*a1 - ty*a2 - tz*a3;
+                float a5 = srx*srz; float a6 = crz*srx; float a7 = ty*a6 - tz*crx - tx*a5;
+                float a8 = crx*cry*srz; float a9 = crx*cry*crz; float a10 = cry*srx; float a11 = tz*a10 + ty*a9 - tx*a8;
 
-            float b1 = -crz*sry - cry*srx*srz; float b2 = cry*crz*srx - sry*srz; float b3 = crx*cry; float b4 = tx*-b1 + ty*-b2 + tz*b3;
-            float b5 = cry*crz - srx*sry*srz; float b6 = cry*srz + crz*srx*sry; float b7 = crx*sry; float b8 = tz*b7 - ty*b6 - tx*b5;
+                float b1 = -crz*sry - cry*srx*srz; float b2 = cry*crz*srx - sry*srz; float b3 = crx*cry; float b4 = tx*-b1 + ty*-b2 + tz*b3;
+                float b5 = cry*crz - srx*sry*srz; float b6 = cry*srz + crz*srx*sry; float b7 = crx*sry; float b8 = tz*b7 - ty*b6 - tx*b5;
 
-            float c1 = -b6; float c2 = b5; float c3 = tx*b6 - ty*b5; float c4 = -crx*crz; float c5 = crx*srz; float c6 = ty*c5 + tx*-c4;
-            float c7 = b2; float c8 = -b1; float c9 = tx*-b2 - ty*-b1;
+                float c1 = -b6; float c2 = b5; float c3 = tx*b6 - ty*b5; float c4 = -crx*crz; float c5 = crx*srz; float c6 = ty*c5 + tx*-c4;
+                float c7 = b2; float c8 = -b1; float c9 = tx*-b2 - ty*-b1;
 
-            // Get A and B
-            for (int i = 0; i < sampleNum; i++) {
+                // Get A and B
+                for (int i = 0; i < sampleNum; i++) {
 
-                PointType pointOri = ransacSamples->points[i];
-                PointType coeff = ransacCoeffs->points[i];
+                    PointType pointOri = ransacSamples->points[i];
+                    PointType coeff = ransacCoeffs->points[i];
 
-                float arx = (-a1*pointOri.x + a2*pointOri.y + a3*pointOri.z + a4) * coeff.x
-                        + (a5*pointOri.x - a6*pointOri.y + crx*pointOri.z + a7) * coeff.y
-                        + (a8*pointOri.x - a9*pointOri.y - a10*pointOri.z + a11) * coeff.z;
+                    float arx = (-a1*pointOri.x + a2*pointOri.y + a3*pointOri.z + a4) * coeff.x
+                            + (a5*pointOri.x - a6*pointOri.y + crx*pointOri.z + a7) * coeff.y
+                            + (a8*pointOri.x - a9*pointOri.y - a10*pointOri.z + a11) * coeff.z;
 
-                float ary = (b1*pointOri.x + b2*pointOri.y - b3*pointOri.z + b4) * coeff.x
-                        + (b5*pointOri.x + b6*pointOri.y - b7*pointOri.z + b8) * coeff.z;
+                    float ary = (b1*pointOri.x + b2*pointOri.y - b3*pointOri.z + b4) * coeff.x
+                            + (b5*pointOri.x + b6*pointOri.y - b7*pointOri.z + b8) * coeff.z;
 
-                float arz = (c1*pointOri.x + c2*pointOri.y + c3) * coeff.x
-                        + (c4*pointOri.x - c5*pointOri.y + c6) * coeff.y
-                        + (c7*pointOri.x + c8*pointOri.y + c9) * coeff.z;
+                    float arz = (c1*pointOri.x + c2*pointOri.y + c3) * coeff.x
+                            + (c4*pointOri.x - c5*pointOri.y + c6) * coeff.y
+                            + (c7*pointOri.x + c8*pointOri.y + c9) * coeff.z;
 
-                float atx = -b5 * coeff.x + c5 * coeff.y + b1 * coeff.z;
-
-                float aty = -b6 * coeff.x + c4 * coeff.y + b2 * coeff.z;
-
-                float atz = b7 * coeff.x - srx * coeff.y - b3 * coeff.z;
-
-                float d2 = coeff.intensity;
-                
-                matA.at<float>(i, 0) = arx;
-                matA.at<float>(i, 1) = ary;
-                matA.at<float>(i, 2) = arz;
-                matA.at<float>(i, 3) = atx;
-                //matA.at<float>(i, 4) = aty;
-                matA.at<float>(i, 4) = atz;
-                matB.at<float>(i, 0) = -0.05 * d2;
-            }
-
-            // Solve problem
-            cv::transpose(matA, matAt);
-            matAtA = matAt * matA;
-            matAtB = matAt * matB;
-            cv::solve(matAtA, matAtB, matX, cv::DECOMP_QR);
-
-            // Degeneracy check
-            if (iter == 0) {
-                cv::Mat matE(1, 5, CV_32F, cv::Scalar::all(0));
-                cv::Mat matV(5, 5, CV_32F, cv::Scalar::all(0));
-                cv::Mat matV2(5, 5, CV_32F, cv::Scalar::all(0));
-
-                cv::eigen(matAtA, matE, matV);
-                matV.copyTo(matV2);
-
-                isDegenerate = false;
-                float eignThre[5] = {10, 10, 10, 10, 10};
-                for (int i = 4; i >= 0; i--) {
-                    if (matE.at<float>(0, i) < eignThre[i]) {
-                        for (int j = 0; j < 5; j++) {
-                            matV2.at<float>(i, j) = 0;
-                        }
-                        isDegenerate = true;
-                    } else {
-                        break;
-                    }
-                }
-                matP = matV.inv() * matV2;
-            }
-
-            if (isDegenerate) {
-                cv::Mat matX2(5, 1, CV_32F, cv::Scalar::all(0));
-                matX.copyTo(matX2);
-                matX = matP * matX2;
-            }
-
-            // Update sampleTransform
-            sampleTransform[0] += matX.at<float>(0, 0);
-            sampleTransform[1] += matX.at<float>(1, 0);
-            sampleTransform[2] += matX.at<float>(2, 0);
-            sampleTransform[3] += matX.at<float>(3, 0);
-            //sampleTransform[4] += matX.at<float>(4, 0);
-            sampleTransform[5] += matX.at<float>(4, 0);
-            
-            for(int i=0; i<6; i++){
-                if(isnan(sampleTransform[i]))
-                    sampleTransform[i]=0;
-            }
-
-            float deltaR = sqrt(
-                            pow(rad2deg(matX.at<float>(0, 0)), 2) +
-                            pow(rad2deg(matX.at<float>(1, 0)), 2) +
-                            pow(rad2deg(matX.at<float>(2, 0)), 2));
-
-            float deltaT = sqrt(
-                            pow(matX.at<float>(3, 0) * 100, 2) +
-                            pow(matX.at<float>(4, 0) * 100, 2));
-            //printf("deltaT: %f\ndeltaR: %f\n",deltaT,deltaR);
-            if (deltaR < 0.01 && deltaT < 0.001) {
-                //printf("Ransac iteration converged at iteration %d\n",iterCount);
-                break;
-            }
-
-            //Update linearization point using new transform
-            for (int i = 0; i < sampleNum; i++) {
-                PointType point = ransacSamples->points[i];
-                int indexInLaserCloudOri = selectedIndices[i];
-                PointType transformedPoint;
-
-                // Point is a surf feature
-                if (indexInLaserCloudOri < surfCorrespondences){
-                    float s = 20 * (point.intensity - int(point.intensity));
-                    float rx = s * sampleTransform[0];
-                    float ry = s * sampleTransform[1];
-                    float rz = s * sampleTransform[2];
-                    float tx = s * sampleTransform[3];
-                    float ty = s * sampleTransform[4];
-                    float tz = s * sampleTransform[5];
-
-                    // z-x-y rotation 
-                    // Rotate around z-axis and translate
-                    float x1 = cos(rz) * (point.x - tx) + sin(rz) * (point.y - ty);
-                    float y1 = -sin(rz) * (point.x - tx) + cos(rz) * (point.y - ty);
-                    float z1 = (point.z - tz);
-                    // Rotate around x-axis
-                    float x2 = x1;
-                    float y2 = cos(rx) * y1 + sin(rx) * z1;
-                    float z2 = -sin(rx) * y1 + cos(rx) * z1;
-                    // Rotate around y-axis
-                    transformedPoint.x = cos(ry) * x2 - sin(ry) * z2;
-                    transformedPoint.y = y2;
-                    transformedPoint.z = sin(ry) * x2 + cos(ry) * z2;
-                    transformedPoint.intensity = point.intensity;
-
-                    // calculate new point to line distance
-                    tripod1 = tripod1Cloud->points[indexInLaserCloudOri];
-                    tripod2 = tripod2Cloud->points[indexInLaserCloudOri];
-                    tripod3 = tripod3Cloud->points[indexInLaserCloudOri];
-                    float pa = (tripod2.y - tripod1.y) * (tripod3.z - tripod1.z) 
-                         - (tripod3.y - tripod1.y) * (tripod2.z - tripod1.z);
-                    float pb = (tripod2.z - tripod1.z) * (tripod3.x - tripod1.x) 
-                                - (tripod3.z - tripod1.z) * (tripod2.x - tripod1.x);
-                    float pc = (tripod2.x - tripod1.x) * (tripod3.y - tripod1.y) 
-                                - (tripod3.x - tripod1.x) * (tripod2.y - tripod1.y);
-                    float pd = -(pa * tripod1.x + pb * tripod1.y + pc * tripod1.z);
-
-                    float ps = sqrt(pa * pa + pb * pb + pc * pc);
-
-                    pa /= ps;
-                    pb /= ps;
-                    pc /= ps;
-                    pd /= ps;
-
-                    float pd2 = pa * transformedPoint.x + pb * transformedPoint.y + pc * transformedPoint.z + pd;
-                    ransacCoeffs->points[i].x = pa;
-                    ransacCoeffs->points[i].y = pb;
-                    ransacCoeffs->points[i].z = pc;
-                    ransacCoeffs->points[i].intensity = pd2;
-                }
-                //Point is an edge feature
-                else {
-                    float s = 20 * (point.intensity - int(point.intensity));
-                    float rx = s * sampleTransform[0];
-                    float ry = s * sampleTransform[1];
-                    float rz = s * sampleTransform[2];
-                    float tx = s * sampleTransform[3];
-                    float ty = s * sampleTransform[4];
-                    float tz = s * sampleTransform[5];
-                    {
-                    // z-x-y rotation 
-                    // Rotate around z-axis and translate
-                    float x1 = cos(rz) * (point.x - tx) + sin(rz) * (point.y - ty);
-                    float y1 = -sin(rz) * (point.x - tx) + cos(rz) * (point.y - ty);
-                    float z1 = (point.z - tz);
-                    // Rotate around x-axis
-                    float x2 = x1;
-                    float y2 = cos(rx) * y1 + sin(rx) * z1;
-                    float z2 = -sin(rx) * y1 + cos(rx) * z1;
-                    // Rotate around y-axis
-                    transformedPoint.x = cos(ry) * x2 - sin(ry) * z2;
-                    transformedPoint.y = y2;
-                    transformedPoint.z = sin(ry) * x2 + cos(ry) * z2;
-                    transformedPoint.intensity = point.intensity;
-                    }
-
-                    // calculate new point to line distance
-                    tripod1 = tripod1Cloud->points[indexInLaserCloudOri];
-                    tripod2 = tripod2Cloud->points[indexInLaserCloudOri];
-                    float x0 = transformedPoint.x;
-                    float y0 = transformedPoint.y;
-                    float z0 = transformedPoint.z;
-                    float x1 = tripod1.x;
-                    float y1 = tripod1.y;
-                    float z1 = tripod1.z;
-                    float x2 = tripod2.x;
-                    float y2 = tripod2.y;
-                    float z2 = tripod2.z;
-
-                    // Cross products
-                    float m11 = ((x0 - x1)*(y0 - y2) - (x0 - x2)*(y0 - y1));
-                    float m22 = ((x0 - x1)*(z0 - z2) - (x0 - x2)*(z0 - z1));
-                    float m33 = ((y0 - y1)*(z0 - z2) - (y0 - y2)*(z0 - z1));
-
-                    // Line length
-                    float a012 = sqrt(m11 * m11  + m22 * m22 + m33 * m33);
-
-                    // distance between the two points
-                    float l12 = sqrt((x1 - x2)*(x1 - x2) + (y1 - y2)*(y1 - y2) + (z1 - z2)*(z1 - z2));
+                    float atx = -b5 * coeff.x + c5 * coeff.y + b1 * coeff.z;
+                    float aty = -b6 * coeff.x + c4 * coeff.y + b2 * coeff.z;
+                    float atz = b7 * coeff.x - srx * coeff.y - b3 * coeff.z;
+                    float d2 = coeff.intensity;
                     
-                    // Calculate jacobian
-                    float la =  ((y1 - y2)*m11 + (z1 - z2)*m22) / a012 / l12;
-                    float lb = -((x1 - x2)*m11 - (z1 - z2)*m33) / a012 / l12;
-                    float lc = -((x1 - x2)*m22 + (y1 - y2)*m33) / a012 / l12;
-
-                    float ld2 = a012 / l12; // point to line distance after optimization
-                    ransacCoeffs->points[i].x = la;
-                    ransacCoeffs->points[i].y = lb;
-                    ransacCoeffs->points[i].z = lc;
-                    ransacCoeffs->points[i].intensity = ld2;
+                    matA.at<float>(i, 0) = arx;
+                    matA.at<float>(i, 1) = ary;
+                    matA.at<float>(i, 2) = arz;
+                    matA.at<float>(i, 3) = atx;
+                    //matA.at<float>(i, 4) = aty;
+                    matA.at<float>(i, 4) = atz;
+                    matB.at<float>(i, 0) = -0.05 * d2;
                 }
-            }
+
+                // Solve problem
+                cv::transpose(matA, matAt);
+                matAtA = matAt * matA;
+                matAtB = matAt * matB;
+                cv::solve(matAtA, matAtB, matX, cv::DECOMP_QR);
+
+                // Degeneracy check
+                if (iter == 0) {
+                    cv::Mat matE(1, 5, CV_32F, cv::Scalar::all(0));
+                    cv::Mat matV(5, 5, CV_32F, cv::Scalar::all(0));
+                    cv::Mat matV2(5, 5, CV_32F, cv::Scalar::all(0));
+
+                    cv::eigen(matAtA, matE, matV);
+                    matV.copyTo(matV2);
+
+                    isDegenerate = false;
+                    float eignThre[5] = {10, 10, 10, 10, 10};
+                    for (int i = 4; i >= 0; i--) {
+                        if (matE.at<float>(0, i) < eignThre[i]) {
+                            for (int j = 0; j < 5; j++) {
+                                matV2.at<float>(i, j) = 0;
+                            }
+                            isDegenerate = true;
+                        } else {
+                            break;
+                        }
+                    }
+                    matP = matV.inv() * matV2;
+                }
+
+                if (isDegenerate) {
+                    cv::Mat matX2(5, 1, CV_32F, cv::Scalar::all(0));
+                    matX.copyTo(matX2);
+                    matX = matP * matX2;
+                }
+
+                // Update sampleTransform
+                sampleTransform[0] += matX.at<float>(0, 0);
+                sampleTransform[1] += matX.at<float>(1, 0);
+                sampleTransform[2] += matX.at<float>(2, 0);
+                sampleTransform[3] += matX.at<float>(3, 0);
+                //sampleTransform[4] += matX.at<float>(4, 0);
+                sampleTransform[5] += matX.at<float>(4, 0);
+                
+                for(int i=0; i<6; i++){
+                    if(isnan(sampleTransform[i]))
+                        sampleTransform[i]=0;
+                }
+
+                float deltaR = sqrt(
+                                pow(rad2deg(matX.at<float>(0, 0)), 2) +
+                                pow(rad2deg(matX.at<float>(1, 0)), 2) +
+                                pow(rad2deg(matX.at<float>(2, 0)), 2));
+
+                float deltaT = sqrt(
+                                pow(matX.at<float>(3, 0) * 100, 2) +
+                                pow(matX.at<float>(4, 0) * 100, 2));
+                //printf("deltaT: %f\ndeltaR: %f\n",deltaT,deltaR);
+                if (deltaR < 0.01 && deltaT < 0.001) {
+                    //printf("Ransac iteration converged at iteration %d\n",iterCount);
+                    break;
+                }
+
+                //Update linearization point using new transform
+                for (int i = 0; i < sampleNum; i++) {
+                    PointType point = ransacSamples->points[i];
+                    int indexInLaserCloudOri = selectedIndices[i];
+                    PointType transformedPoint;
+
+                    // Point is a surf feature
+                    if (indexInLaserCloudOri < surfCorrespondences){
+                        float s = 20 * (point.intensity - int(point.intensity));
+                        float rx = s * sampleTransform[0];
+                        float ry = s * sampleTransform[1];
+                        float rz = s * sampleTransform[2];
+                        float tx = s * sampleTransform[3];
+                        float ty = s * sampleTransform[4];
+                        float tz = s * sampleTransform[5];
+
+                        // z-x-y rotation 
+                        // Rotate around z-axis and translate
+                        float x1 = cos(rz) * (point.x - tx) + sin(rz) * (point.y - ty);
+                        float y1 = -sin(rz) * (point.x - tx) + cos(rz) * (point.y - ty);
+                        float z1 = (point.z - tz);
+                        // Rotate around x-axis
+                        float x2 = x1;
+                        float y2 = cos(rx) * y1 + sin(rx) * z1;
+                        float z2 = -sin(rx) * y1 + cos(rx) * z1;
+                        // Rotate around y-axis
+                        transformedPoint.x = cos(ry) * x2 - sin(ry) * z2;
+                        transformedPoint.y = y2;
+                        transformedPoint.z = sin(ry) * x2 + cos(ry) * z2;
+                        transformedPoint.intensity = point.intensity;
+
+                        // calculate new point to line distance
+                        tripod1 = tripod1Cloud->points[indexInLaserCloudOri];
+                        tripod2 = tripod2Cloud->points[indexInLaserCloudOri];
+                        tripod3 = tripod3Cloud->points[indexInLaserCloudOri];
+                        float pa = (tripod2.y - tripod1.y) * (tripod3.z - tripod1.z) 
+                            - (tripod3.y - tripod1.y) * (tripod2.z - tripod1.z);
+                        float pb = (tripod2.z - tripod1.z) * (tripod3.x - tripod1.x) 
+                                    - (tripod3.z - tripod1.z) * (tripod2.x - tripod1.x);
+                        float pc = (tripod2.x - tripod1.x) * (tripod3.y - tripod1.y) 
+                                    - (tripod3.x - tripod1.x) * (tripod2.y - tripod1.y);
+                        float pd = -(pa * tripod1.x + pb * tripod1.y + pc * tripod1.z);
+
+                        float ps = sqrt(pa * pa + pb * pb + pc * pc);
+
+                        pa /= ps;
+                        pb /= ps;
+                        pc /= ps;
+                        pd /= ps;
+
+                        float pd2 = pa * transformedPoint.x + pb * transformedPoint.y + pc * transformedPoint.z + pd;
+                        ransacCoeffs->points[i].x = pa;
+                        ransacCoeffs->points[i].y = pb;
+                        ransacCoeffs->points[i].z = pc;
+                        ransacCoeffs->points[i].intensity = pd2;
+                    }
+                    //Point is an edge feature
+                    else {
+                        float s = 20 * (point.intensity - int(point.intensity));
+                        float rx = s * sampleTransform[0];
+                        float ry = s * sampleTransform[1];
+                        float rz = s * sampleTransform[2];
+                        float tx = s * sampleTransform[3];
+                        float ty = s * sampleTransform[4];
+                        float tz = s * sampleTransform[5];
+                        {
+                        // z-x-y rotation 
+                        // Rotate around z-axis and translate
+                        float x1 = cos(rz) * (point.x - tx) + sin(rz) * (point.y - ty);
+                        float y1 = -sin(rz) * (point.x - tx) + cos(rz) * (point.y - ty);
+                        float z1 = (point.z - tz);
+                        // Rotate around x-axis
+                        float x2 = x1;
+                        float y2 = cos(rx) * y1 + sin(rx) * z1;
+                        float z2 = -sin(rx) * y1 + cos(rx) * z1;
+                        // Rotate around y-axis
+                        transformedPoint.x = cos(ry) * x2 - sin(ry) * z2;
+                        transformedPoint.y = y2;
+                        transformedPoint.z = sin(ry) * x2 + cos(ry) * z2;
+                        transformedPoint.intensity = point.intensity;
+                        }
+
+                        // calculate new point to line distance
+                        tripod1 = tripod1Cloud->points[indexInLaserCloudOri];
+                        tripod2 = tripod2Cloud->points[indexInLaserCloudOri];
+                        float x0 = transformedPoint.x;
+                        float y0 = transformedPoint.y;
+                        float z0 = transformedPoint.z;
+                        float x1 = tripod1.x;
+                        float y1 = tripod1.y;
+                        float z1 = tripod1.z;
+                        float x2 = tripod2.x;
+                        float y2 = tripod2.y;
+                        float z2 = tripod2.z;
+
+                        // Cross products
+                        float m11 = ((x0 - x1)*(y0 - y2) - (x0 - x2)*(y0 - y1));
+                        float m22 = ((x0 - x1)*(z0 - z2) - (x0 - x2)*(z0 - z1));
+                        float m33 = ((y0 - y1)*(z0 - z2) - (y0 - y2)*(z0 - z1));
+
+                        // Line length
+                        float a012 = sqrt(m11 * m11  + m22 * m22 + m33 * m33);
+
+                        // distance between the two points
+                        float l12 = sqrt((x1 - x2)*(x1 - x2) + (y1 - y2)*(y1 - y2) + (z1 - z2)*(z1 - z2));
+                        
+                        // Calculate jacobian
+                        float la =  ((y1 - y2)*m11 + (z1 - z2)*m22) / a012 / l12;
+                        float lb = -((x1 - x2)*m11 - (z1 - z2)*m33) / a012 / l12;
+                        float lc = -((x1 - x2)*m22 + (y1 - y2)*m33) / a012 / l12;
+
+                        float ld2 = a012 / l12; // point to line distance after optimization
+                        ransacCoeffs->points[i].x = la;
+                        ransacCoeffs->points[i].y = lb;
+                        ransacCoeffs->points[i].z = lc;
+                        ransacCoeffs->points[i].intensity = ld2;
+                    }
+                }
         }
 
             // Inlier check
@@ -1933,7 +1934,8 @@ void findCorrespondingCornerFeatures(int iterCount){
                 tripod2 = tripod2Cloud->points[k];
                 tripod3 = tripod3Cloud->points[k];
                 float pl2 = pointToPlaneDist(transformedPoint, tripod1, tripod2, tripod3);
-                float c = 1 - 3.6 * fabs(pl2)*pow(2.0,iterCount); // Only keep points with small p2l distances, small p2l --> s close to 1
+                float c = 1 - 3.6 * fabs(pl2)/sqrt(sqrt(transformedPoint.x * transformedPoint.x
+                            + transformedPoint.y * transformedPoint.y + transformedPoint.z * transformedPoint.z)); // Only keep points with small p2l distances, small p2l --> s close to 1
                 if (c > 0.1) {
                     surfInlierCount += 1;
                     inlierCloud.push_back(point);
@@ -1980,7 +1982,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                 tripod2 = tripod2Cloud->points[k];
                 float ld2 = pointToLineDist(transformedPoint, tripod1, tripod2);
 
-                float c = 1 - 3.6 * fabs(ld2)*pow(2.0,iterCount); // Only keep points with small p2l distances, small p2l --> s close to 1
+                float c = 1 - 3.6 * fabs(ld2); // Only keep points with small p2l distances, small p2l --> s close to 1
                 if (c > 0.1) {
                     cornerInlierCount += 1;
                     inlierCloud.push_back(point);
@@ -1997,6 +1999,7 @@ void findCorrespondingCornerFeatures(int iterCount){
             if (inlierCount > largestInlierCount) {
                 largestInlierSet.reset(new pcl::PointCloud<PointType>(inlierCloud)); 
                 largestInlierSetCoeffs.reset(new pcl::PointCloud<PointType>(inlierCoeff));
+
                 smallestEdgeOutlierSet.reset(new pcl::PointCloud<PointType>(edgeOutlierCloud));
                 smallestSurfOutlierSet.reset(new pcl::PointCloud<PointType>(surfOutlierCloud));
                 largestEdgeInlierSet.reset(new pcl::PointCloud<PointType>(edgeInlierCloud));
@@ -2009,7 +2012,7 @@ void findCorrespondingCornerFeatures(int iterCount){
 
         int inlierSetSize = largestInlierSet->points.size();
 
-        if (iterCount>0 && iterCount % 20 == 0){
+        if (iterCount % 1 == 0){
         printf("Iter: %d \n", iterCount);
         printf("Surf limit: %f\n",surfFactor);
         printf("Corner limit: %f\n",cornerFactor);
@@ -2123,26 +2126,26 @@ void findCorrespondingCornerFeatures(int iterCount){
 
             // Degeneracy check
             if (iterCount == 0) {
-            cv::Mat matE(1, 5, CV_32F, cv::Scalar::all(0));
-            cv::Mat matV(5, 5, CV_32F, cv::Scalar::all(0));
-            cv::Mat matV2(5, 5, CV_32F, cv::Scalar::all(0));
+                cv::Mat matE(1, 5, CV_32F, cv::Scalar::all(0));
+                cv::Mat matV(5, 5, CV_32F, cv::Scalar::all(0));
+                cv::Mat matV2(5, 5, CV_32F, cv::Scalar::all(0));
 
-            cv::eigen(matAtA, matE, matV);
-            matV.copyTo(matV2);
+                cv::eigen(matAtA, matE, matV);
+                matV.copyTo(matV2);
 
-            isDegenerate = false;
-            float eignThre[5] = {10, 10, 10, 10, 10};
-            for (int i = 4; i >= 0; i--) {
-                if (matE.at<float>(0, i) < eignThre[i]) {
-                    for (int j = 0; j < 5; j++) {
-                        matV2.at<float>(i, j) = 0;
+                isDegenerate = false;
+                float eignThre[5] = {10, 10, 10, 10, 10};
+                for (int i = 4; i >= 0; i--) {
+                    if (matE.at<float>(0, i) < eignThre[i]) {
+                        for (int j = 0; j < 5; j++) {
+                            matV2.at<float>(i, j) = 0;
+                        }
+                        isDegenerate = true;
+                    } else {
+                        break;
                     }
-                    isDegenerate = true;
-                } else {
-                    break;
                 }
-            }
-            matP = matV.inv() * matV2;
+                matP = matV.inv() * matV2;
             }
     
             if (isDegenerate) {
