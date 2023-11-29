@@ -1762,7 +1762,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                                 pow(matX.at<float>(3, 0) * 100, 2) +
                                 pow(matX.at<float>(4, 0) * 100, 2));
                 //printf("deltaT: %f\ndeltaR: %f\n",deltaT,deltaR);
-                if (deltaR < 0.01 && deltaT < 0.001) {
+                if (deltaR < 0.05 && deltaT < 0.05) {
                     //printf("Ransac iteration converged at iteration %d\n",iterCount);
                     break;
                 }
@@ -1983,7 +1983,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                 float ld2 = pointToLineDist(transformedPoint, tripod1, tripod2);
 
                 float c = 1 - 3.6 * fabs(ld2); // Only keep points with small p2l distances, small p2l --> s close to 1
-                if (c > -5) {
+                if (c > -10) {
                     cornerInlierCount += 1;
                     inlierCloud.push_back(point);
                     inlierCoeff.push_back(coeff);
