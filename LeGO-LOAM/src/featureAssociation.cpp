@@ -1936,7 +1936,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                 float pl2 = pointToPlaneDist(transformedPoint, tripod1, tripod2, tripod3);
                 float c = 1 - 3.6 * fabs(pl2)/sqrt(sqrt(transformedPoint.x * transformedPoint.x
                             + transformedPoint.y * transformedPoint.y + transformedPoint.z * transformedPoint.z)); // Only keep points with small p2l distances, small p2l --> s close to 1
-                if (c > 0.1) {
+                if (c > 0) {
                     surfInlierCount += 1;
                     inlierCloud.push_back(point);
                     inlierCoeff.push_back(coeff);
@@ -1983,7 +1983,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                 float ld2 = pointToLineDist(transformedPoint, tripod1, tripod2);
 
                 float c = 1 - 3.6 * fabs(ld2); // Only keep points with small p2l distances, small p2l --> s close to 1
-                if (c > 0.1) {
+                if (c > -5) {
                     cornerInlierCount += 1;
                     inlierCloud.push_back(point);
                     inlierCoeff.push_back(coeff);
