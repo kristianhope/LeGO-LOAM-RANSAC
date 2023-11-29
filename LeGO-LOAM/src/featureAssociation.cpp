@@ -1299,7 +1299,7 @@ public:
 
                 float s = 1;
                 if (iterCount >= 5) {
-                    s = 1 - 3.6*(pow(1.5,iterCount)) * fabs(pd2) / sqrt(sqrt(pointSel.x * pointSel.x
+                    s = 1 - 3.6*(pow(1.25,iterCount)) * fabs(pd2) / sqrt(sqrt(pointSel.x * pointSel.x
                             + pointSel.y * pointSel.y + pointSel.z * pointSel.z));
                 }
 
@@ -1732,6 +1732,7 @@ public:
             findCorrespondingCornerFeatures(iterCount2);
             findCorrespondingSurfFeatures(iterCount2);
 
+
             //printf("%d\n",laserCloudOri->points.size());
 
             if (laserCloudOri->points.size() < 10) // too few features
@@ -1739,11 +1740,13 @@ public:
             if (calculateTransformation(iterCount2) == false)
                 break;
         }
-        printf("LaserCloudOri: %d\n",laserCloudOri->points.size());
-        pcl::toROSMsg(*laserCloudOri, laserCloudOutMsg);
-	    laserCloudOutMsg.header.stamp = cloudHeader.stamp;
-	    laserCloudOutMsg.header.frame_id = "camera";
-	    pubCornerPointsOdom.publish(laserCloudOutMsg);
+
+            pcl::toROSMsg(*laserCloudOri, laserCloudOutMsg);
+	        laserCloudOutMsg.header.stamp = cloudHeader.stamp;
+	        laserCloudOutMsg.header.frame_id = "camera";
+	        pubCornerPointsOdom.publish(laserCloudOutMsg);
+            printf("LaserCloudOri: %d\n",laserCloudOri->points.size());
+        
     }
 
     
