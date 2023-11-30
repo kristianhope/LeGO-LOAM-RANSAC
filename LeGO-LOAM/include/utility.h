@@ -75,7 +75,7 @@ extern const int groundScanInd = 7;*/
 
 //Ouster 1024x20
 extern const int N_SCAN = 128;
-extern const int Horizon_SCAN = 1024;
+extern const int Horizon_SCAN = 2048;
 extern const float ang_res_x = 360.0/float(1024);
 extern const float ang_res_y = 45/float(128-1);
 extern const float ang_bottom = 22.5 + 0.1;
@@ -116,9 +116,9 @@ extern const int groundScanInd = 30;
 // extern const int groundScanInd = 15;
 
 extern const bool loopClosureEnableFlag = true;
-extern const double mappingProcessInterval = 0.3/2;
+extern const double mappingProcessInterval = 0.3;
 
-extern const float scanPeriod = 0.05; // 20 Hz?
+extern const float scanPeriod = 0.1; // 10 Hz?
 extern const int systemDelay = 0;
 extern const int imuQueLength = 200;
 
@@ -136,7 +136,7 @@ extern const int surfFeatureNum = 4;
 extern const int sectionsTotal = 6;
 extern const float edgeThreshold = 0.1; //curvature threshold
 extern const float surfThreshold = 0.1;
-extern const float nearestFeatureSearchSqDist = 15;
+extern const float nearestFeatureSearchSqDist = 25;
 
 
 // Mapping Params

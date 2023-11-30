@@ -5,6 +5,7 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
+        - /TF1/Frames1
       Splitter Ratio: 0.7039999961853027
     Tree Height: 797
   - Class: rviz/Selection
@@ -32,50 +33,12 @@ Visualization Manager:
   Class: ""
   Displays:
     - Class: rviz/TF
-      Enabled: true
+      Enabled: false
       Filter (blacklist): ""
       Filter (whitelist): ""
       Frame Timeout: 15
       Frames:
         All Enabled: false
-        NED:
-          Value: false
-        NED_seapath:
-          Value: false
-        aft_mapped:
-          Value: false
-        base_link:
-          Value: false
-        body:
-          Value: false
-        camera:
-          Value: false
-        camera_init:
-          Value: false
-        eocam_port:
-          Value: false
-        eocam_starboard:
-          Value: false
-        ground_truth:
-          Value: false
-        ircam_port:
-          Value: false
-        ircam_starboard:
-          Value: false
-        laser_odom:
-          Value: false
-        map:
-          Value: false
-        os_imu:
-          Value: false
-        os_lidar:
-          Value: false
-        os_sensor:
-          Value: false
-        surface:
-          Value: false
-        targa_base:
-          Value: false
       Marker Alpha: 1
       Marker Scale: 10
       Name: TF
@@ -83,38 +46,9 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        body:
-          NED:
-            ground_truth:
-              {}
-            map:
-              camera_init:
-                aft_mapped:
-                  {}
-                camera:
-                  base_link:
-                    {}
-                laser_odom:
-                  {}
-          surface:
-            NED_seapath:
-              {}
-          targa_base:
-            eocam_port:
-              {}
-            eocam_starboard:
-              {}
-            ircam_port:
-              {}
-            ircam_starboard:
-              {}
-            os_sensor:
-              os_imu:
-                {}
-              os_lidar:
-                {}
+        {}
       Update Interval: 0
-      Value: true
+      Value: false
     - Alpha: 1
       Class: rviz/Axes
       Enabled: true
@@ -126,13 +60,13 @@ Visualization Manager:
       Value: true
     - Alpha: 1
       Class: rviz/Axes
-      Enabled: true
+      Enabled: false
       Length: 1
       Name: base_link
       Radius: 0.5
       Reference Frame: base_link
       Show Trail: false
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -528,8 +462,8 @@ Visualization Manager:
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 23.19810676574707
-        Min Value: -37.53940963745117
+        Max Value: 22.074987411499023
+        Min Value: -45.689849853515625
         Value: true
       Axis: Z
       Channel Name: intensity
@@ -683,13 +617,13 @@ Visualization Manager:
       Value: false
     - Alpha: 1
       Class: rviz/Axes
-      Enabled: true
+      Enabled: false
       Length: 1
       Name: Axes
       Radius: 0.10000000149011612
       Reference Frame: laser_odom
       Show Trail: false
-      Value: true
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 0; 0; 0
@@ -722,9 +656,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.4397971034049988
+      Pitch: 0.3347971439361572
       Target Frame: base_link
-      Yaw: 0.9160230755805969
+      Yaw: 1.8260236978530884
     Saved: ~
 Window Geometry:
   Displays:

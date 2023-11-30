@@ -881,7 +881,7 @@ public:
         // interpolation coefficient calculation
         // point.intensity = int(segmentedCloud->points[i].intensity) + scanPeriod * relTime;
         // Change to 20 of 20 Hz? 1/s * s
-        float s = 20 * (pi->intensity - int(pi->intensity)); //The relative time is in the decimal part of intensity
+        float s = (1/scanPeriod) * (pi->intensity - int(pi->intensity)); //The relative time is in the decimal part of intensity
 
         /********************************************************************************
         Ry*Rx*Rz*Pl, transform point to the global frame
@@ -914,7 +914,7 @@ public:
     void TransformToEnd(PointType const * const pi, PointType * const po)
     {
         // interpolation coefficient calculation
-        float s = 20 * (pi->intensity - int(pi->intensity));
+        float s = (1/scanPeriod) * (pi->intensity - int(pi->intensity));
 
         /********************************************************************************
         Ry*Rx*Rz*Pl, transform point to the global frame
@@ -1182,8 +1182,12 @@ public:
                 float ld2 = a012 / l12; // point to line distance
 
                 float s = 1;
+                float deltaT = sqrt(transformCur[3] * transformCur[3] + 
+                    transformCur[4] * transformCur[4] + 
+                    transformCur[5] * transformCur[5]);
+                
                 if (iterCount >= 5) {
-                    s = 1 - 3.6*(pow(1.25,iterCount)) * fabs(ld2);
+                    s = 1 - 3.6*(pow(1.0,iterCount)) * fabs(ld2);
                 } // If ld2 = 0.5 --> s = 1 - 0.9 = 0.1
                 // Reduce to 0.25 since 20 Hz
                 // factor 1.8 --> 3.6
@@ -1298,8 +1302,11 @@ public:
                 float pd2 = pa * pointSel.x + pb * pointSel.y + pc * pointSel.z + pd;
 
                 float s = 1;
+                float deltaT = sqrt(transformCur[3] * transformCur[3] + 
+                                    transformCur[4] * transformCur[4] + 
+                                    transformCur[5] * transformCur[5]);
                 if (iterCount >= 5) {
-                    s = 1 - 3.6*(pow(1.25,iterCount)) * fabs(pd2) / sqrt(sqrt(pointSel.x * pointSel.x
+                    s = 1 - 3.6*(pow(1.0,iterCount)) * fabs(pd2) / sqrt(sqrt(pointSel.x * pointSel.x
                             + pointSel.y * pointSel.y + pointSel.z * pointSel.z));
                 }
 
@@ -1633,7 +1640,7 @@ public:
         transformCur[3] += matX.at<float>(3, 0);
         //transformCur[4] += matX.at<float>(4, 0);
         transformCur[5] += matX.at<float>(4, 0);
-
+    
         for(int i=0; i<6; i++){
             if(isnan(transformCur[i]))
                 transformCur[i]=0;
@@ -1745,7 +1752,7 @@ public:
 	        laserCloudOutMsg.header.stamp = cloudHeader.stamp;
 	        laserCloudOutMsg.header.frame_id = "camera";
 	        pubCornerPointsOdom.publish(laserCloudOutMsg);
-            printf("LaserCloudOri: %d\n",laserCloudOri->points.size());
+            //printf("LaserCloudOri: %d\n",laserCloudOri->points.size());
         
     }
 
