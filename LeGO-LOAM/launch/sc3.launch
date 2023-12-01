@@ -1,6 +1,6 @@
 <launch>
     
-    <node pkg="rosbag" type="play" name="rosbag_play" args=" --topics /os_cloud_node/points /seapath/pose /tf --clock $(env HOME)/rosbags/MR_sc3_ouster_1024x20_cloudy/otter27-ouster-scen3-2048-cloudy/oust_goodweather_scen3_2048x10_2021-03-02-13-07-04.bag -s 10 -r 0.8 "/> 
+    <node pkg="rosbag" type="play" name="rosbag_play" args=" --topics /os_cloud_node/points /seapath/pose /tf --clock $(env HOME)/rosbags/MR_sc3_ouster_2048x10_cloudy/otter27-ouster-scen3-2048-cloudy/oust_goodweather_scen3_2048x10_2021-03-02-13-07-04.bag -s 10 -r 1.0 "/> 
 
     
     <!--- Sim Time -->
@@ -20,5 +20,5 @@
     <node pkg="lego_loam" type="mapOptmization"     name="mapOptmization"     output="screen"/>
     <node pkg="lego_loam" type="transformFusion"    name="transformFusion"    output="screen"/>
     <node pkg="lego_loam" type="groundTruth"        name="groundTruth"        output="screen"/>
-
+    <node pkg="lego_loam" type="GNSSpath"        name="GNSSpath"        output="screen"/>
 </launch>

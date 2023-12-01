@@ -219,6 +219,8 @@ private:
     float cRoll, sRoll, cPitch, sPitch, cYaw, sYaw, tX, tY, tZ;
     float ctRoll, stRoll, ctPitch, stPitch, ctYaw, stYaw, tInX, tInY, tInZ;
 
+    int loopClosureCount;;
+
 public:
 
     
@@ -371,6 +373,7 @@ public:
         aLoopIsClosed = false;
 
         latestFrameID = 0;
+        loopClosureCount = 0;
     }
 
     //T_(tobe)=T_(wAft)*T_(wBef).inverse*T_(wsum)
@@ -884,7 +887,6 @@ public:
             if (detectLoopClosure() == true){
                 potentialLoopFlag = true; // find some key frames that is old enough or close enough for loop closure
                 timeSaveFirstCurrentScanForLoopClosure = timeLaserOdometry;
-                printf("Loop closure detected\n");
             }
             if (potentialLoopFlag == false)
                 return;
@@ -906,6 +908,9 @@ public:
 
         if (icp.hasConverged() == false || icp.getFitnessScore() > historyKeyframeFitnessScore)
             return;
+
+        loopClosureCount += 1;
+        printf("Loop closure performed. Total loop closures: %d\n",loopClosureCount);
         // publish corrected cloud
         if (pubIcpKeyFrames.getNumSubscribers() != 0){
             pcl::PointCloud<PointType>::Ptr closed_cloud(new pcl::PointCloud<PointType>());
@@ -1166,7 +1171,7 @@ public:
 
                     float ld2 = a012 / l12;
 
-                    float s = 1 - 1.8 * fabs(ld2)*pow(1.1,iterCount);
+                    float s = 1 - 0.9 * fabs(ld2)*pow(1.0,iterCount);
 
                     coeff.x = s * la;
                     coeff.y = s * lb;
@@ -1218,7 +1223,7 @@ public:
                 if (planeValid) {
                     float pd2 = pa * pointSel.x + pb * pointSel.y + pc * pointSel.z + pd;
 
-                    float s = 1 - 1.8 * fabs(pd2) * pow(1.1,iterCount)/ sqrt(sqrt(pointSel.x * pointSel.x //0
+                    float s = 1 - 0.9 * fabs(pd2) * pow(1.0,iterCount)/ sqrt(sqrt(pointSel.x * pointSel.x //0
                             + pointSel.y * pointSel.y + pointSel.z * pointSel.z));
 
                     coeff.x = s * pa;

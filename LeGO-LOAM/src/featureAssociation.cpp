@@ -194,6 +194,8 @@ private:
 
     int frameCount;
 
+
+
 public:
 
     FeatureAssociation():
@@ -1187,7 +1189,7 @@ public:
                     transformCur[5] * transformCur[5]);
                 
                 if (iterCount >= 5) {
-                    s = 1 - 3.6*(pow(1.0,iterCount)) * fabs(ld2);
+                    s = 1 - 1.8*(pow(1.0,iterCount)) * fabs(ld2);
                 } // If ld2 = 0.5 --> s = 1 - 0.9 = 0.1
                 // Reduce to 0.25 since 20 Hz
                 // factor 1.8 --> 3.6
@@ -1306,7 +1308,7 @@ public:
                                     transformCur[4] * transformCur[4] + 
                                     transformCur[5] * transformCur[5]);
                 if (iterCount >= 5) {
-                    s = 1 - 3.6*(pow(1.0,iterCount)) * fabs(pd2) / sqrt(sqrt(pointSel.x * pointSel.x
+                    s = 1 - 1.8*(pow(1.0,iterCount)) * fabs(pd2) / sqrt(sqrt(pointSel.x * pointSel.x
                             + pointSel.y * pointSel.y + pointSel.z * pointSel.z));
                 }
 
