@@ -23,11 +23,15 @@ void posestampedCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 
     tf::Pose z_body_to_sensor = tf::Pose(z_body_to_sensor_ori,z_body_to_sensor_pos);
 
+    tf::Quaternion rotate_axes = tf::Quaternion(M_PI/2,0,-M_PI/2);
+    tf::Vector3 rotate_axes_ori = tf::Vector3(0,0,0);
+    tf::Pose rotate_axes_pose = tf::Pose(rotate_axes,rotate_axes_ori);
+
 
     tf::Pose body;
     tf::poseMsgToTF(msg->pose, body);
 
-    tf::Pose ground_truth = body * z_body_to_sensor; // shift the frame to the sensor frame, so that everything aligns
+    tf::Pose ground_truth = body * z_body_to_sensor * rotate_axes_pose; // shift the frame to the sensor frame, so that everything aligns
 
     geometry_msgs::Pose ground_truth_msg;
     tf::poseTFToMsg(ground_truth, ground_truth_msg);

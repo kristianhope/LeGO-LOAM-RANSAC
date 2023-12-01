@@ -1188,6 +1188,8 @@ public:
 
         int surfPointsFlatNum = surfPointsFlat->points.size();
 
+        vector<float> allpd2vec; 
+
         for (int i = 0; i < surfPointsFlatNum; i++) {
 
             TransformToStart(&surfPointsFlat->points[i], &pointSel);
@@ -1279,6 +1281,7 @@ public:
                 pd /= ps;
 
                 float pd2 = pa * pointSel.x + pb * pointSel.y + pc * pointSel.z + pd;
+                allpd2vec.push_back(pd2);
 
                 float s = 1;
                 if (iterCount >= 5) {
@@ -1314,6 +1317,17 @@ public:
             }
             
         }
+
+        float pd2mean = accumulate(allpd2vec.begin(), allpd2vec.end(), 0.0) / allpd2vec.size();
+        float pd2var = 0;
+        for (int i = 0; i < allpd2vec.size(); i++) {
+            pd2var += (allpd2vec[i] - pd2mean) * (allpd2vec[i] - pd2mean);
+        }
+        pd2var /= allpd2vec.size();
+        if (iterCount % 10 == 0)
+            printf("pd2mean: %f, pd2var: %f\n", pd2mean, pd2var);
+
+
         sensor_msgs::PointCloud2 laserCloudOutMsg;
         pcl::toROSMsg(*coeffUnscaledSelSurf, laserCloudOutMsg);
         laserCloudOutMsg.header.stamp = cloudHeader.stamp;
@@ -1434,6 +1448,7 @@ public:
 void findCorrespondingCornerFeatures(int iterCount){
 
         int cornerPointsSharpNum = cornerPointsSharp->points.size(); // CornerPointsSharp will be cleared and updated along the way
+        vector<float> allLd2vec; // Vector of all point to line distances
 
         // Process the feature points with largest curvature in the current point cloud,
         // and find two nearest points from features with largest curvature from previous point cloud.
@@ -1532,6 +1547,8 @@ void findCorrespondingCornerFeatures(int iterCount){
                 float lc = -((x1 - x2)*m22 + (y1 - y2)*m33) / a012 / l12;
 
                 float ld2 = a012 / l12; // point to line distance
+                allLd2vec.push_back(ld2);
+                
 
                 float s = 1;
                 if (iterCount >= 5) {
@@ -1559,6 +1576,9 @@ void findCorrespondingCornerFeatures(int iterCount){
                     coeffUnscaled.intensity = ld2;
                     coeffUnscaledSel->push_back(coeffUnscaled);
                 }
+
+                
+
                 PointType coeffUnscaled;
                 coeffUnscaled.x = x0; 
                 coeffUnscaled.y = y0;
@@ -1568,6 +1588,16 @@ void findCorrespondingCornerFeatures(int iterCount){
             }
 
         }
+
+        float ld2mean = accumulate(allLd2vec.begin(), allLd2vec.end(), 0.0) / allLd2vec.size();
+        float ld2var = 0;
+        for (int i = 0; i < allLd2vec.size(); i++) {
+            ld2var += (allLd2vec[i] - ld2mean) * (allLd2vec[i] - ld2mean);
+        }
+        ld2var /= allLd2vec.size();
+        if (iterCount % 10 == 0)
+            printf("ld2mean: %f, ld2var: %f\n", ld2mean, ld2var);
+
         sensor_msgs::PointCloud2 laserCloudOutMsg;
         pcl::toROSMsg(*coeffUnscaledSelEdge, laserCloudOutMsg);
         laserCloudOutMsg.header.stamp = cloudHeader.stamp;
@@ -1614,7 +1644,7 @@ void findCorrespondingCornerFeatures(int iterCount){
         int largestSurfInlierCount = 0;
         float sampleTransform[6];
 
-        for (int i = 0; i < 1000; i++){
+        for (int i = 0; i < 500; i++){
             // Reset sample transform
             for (int p = 0; p < 6; p++) {
                 sampleTransform[p] = transformCur[p];
@@ -1936,7 +1966,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                 tripod2 = tripod2Cloud->points[k];
                 tripod3 = tripod3Cloud->points[k];
                 float pl2 = pointToPlaneDist(transformedPoint, tripod1, tripod2, tripod3);
-                float c = 1 - 5.4 * pow(1.1,iterCount)* fabs(pl2)/sqrt(sqrt(point.x*point.x + point.y*point.y + point.z*point.z));
+                float c = 1 - 3.6 * pow(1.1,iterCount)* fabs(pl2)/sqrt(sqrt(point.x*point.x + point.y*point.y + point.z*point.z));
                 if (c > 0.1) {
                     surfInlierCount += 1;
                     inlierCloud.push_back(point);
@@ -1983,7 +2013,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                 tripod2 = tripod2Cloud->points[k];
                 float ld2 = pointToLineDist(transformedPoint, tripod1, tripod2);
 
-                float c = 1 - 3.6 * pow(1.01,iterCount) *fabs(ld2); // Only keep points with small p2l distances, small p2l --> s close to 1
+                float c = 1 - 1.8 * pow(1.01,iterCount) *fabs(ld2); // Only keep points with small p2l distances, small p2l --> s close to 1
                 if (c > 0.1) {
                     cornerInlierCount += 1;
                     inlierCloud.push_back(point);
