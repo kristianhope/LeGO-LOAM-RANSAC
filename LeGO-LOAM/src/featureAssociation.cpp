@@ -1021,7 +1021,7 @@ public:
     void TransformToEnd(PointType const * const pi, PointType * const po)
     {
         // interpolation coefficient calculation
-        float s = 20 * (pi->intensity - int(pi->intensity));
+        float s = (1/scanPeriod)* (pi->intensity - int(pi->intensity));
 
         /********************************************************************************
         Ry*Rx*Rz*Pl, transform point to the global frame
@@ -1612,7 +1612,7 @@ void findCorrespondingCornerFeatures(int iterCount){
         int largestSurfInlierCount = 0;
         float sampleTransform[6];
 
-        for (int i = 0; i < 1000; i++){
+        for (int i = 0; i < 500; i++){
             // Reset sample transform
             for (int p = 0; p < 6; p++) {
                 sampleTransform[p] = transformCur[p];
@@ -1774,7 +1774,7 @@ void findCorrespondingCornerFeatures(int iterCount){
 
                     // Point is a surf feature
                     if (indexInLaserCloudOri < surfCorrespondences){
-                        float s = 20 * (point.intensity - int(point.intensity));
+                        float s = (1/scanPeriod)* (point.intensity - int(point.intensity));
                         float rx = s * sampleTransform[0];
                         float ry = s * sampleTransform[1];
                         float rz = s * sampleTransform[2];
@@ -1824,7 +1824,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                     }
                     //Point is an edge feature
                     else {
-                        float s = 20 * (point.intensity - int(point.intensity));
+                        float s = (1/scanPeriod)* (point.intensity - int(point.intensity));
                         float rx = s * sampleTransform[0];
                         float ry = s * sampleTransform[1];
                         float rz = s * sampleTransform[2];
@@ -1905,7 +1905,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                 PointType coeff = coeffSel->points[k];
                 PointType transformedPoint;
 
-                float s = 20 * (point.intensity - int(point.intensity));
+                float s = (1/scanPeriod)* (point.intensity - int(point.intensity));
                 float rx = s * sampleTransform[0];
                 float ry = s * sampleTransform[1];
                 float rz = s * sampleTransform[2];
@@ -1933,7 +1933,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                 tripod2 = tripod2Cloud->points[k];
                 tripod3 = tripod3Cloud->points[k];
                 float pl2 = pointToPlaneDist(transformedPoint, tripod1, tripod2, tripod3);
-                float c = 1 - 5.4 * pow(1.1,iterCount)* fabs(pl2); // Only keep points with small p2l distances, small p2l --> s close to 1
+                float c = 1 - 10.8 * pow(1.1,iterCount)* fabs(pl2); // Only keep points with small p2l distances, small p2l --> s close to 1
                 if (c > 0.1) {
                     surfInlierCount += 1;
                     inlierCloud.push_back(point);
@@ -1952,7 +1952,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                 PointType coeff = coeffSel->points[k];
                 PointType transformedPoint;
 
-                float s = 20 * (point.intensity - int(point.intensity));
+                float s = (1/scanPeriod)* (point.intensity - int(point.intensity));
                 float rx = s * sampleTransform[0];
                 float ry = s * sampleTransform[1];
                 float rz = s * sampleTransform[2];
@@ -1980,7 +1980,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                 tripod2 = tripod2Cloud->points[k];
                 float ld2 = pointToLineDist(transformedPoint, tripod1, tripod2);
 
-                float c = 1 - 5.4 * pow(1.01,iterCount) *fabs(ld2); // Only keep points with small p2l distances, small p2l --> s close to 1
+                float c = 1 - 9 * pow(1.01,iterCount) *fabs(ld2); // Only keep points with small p2l distances, small p2l --> s close to 1
                 if (c > 0.1) {
                     cornerInlierCount += 1;
                     inlierCloud.push_back(point);

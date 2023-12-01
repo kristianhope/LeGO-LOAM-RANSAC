@@ -1,0 +1,24 @@
+<launch>
+    
+    <node pkg="rosbag" type="play" name="rosbag_play" args=" --topics /os_cloud_node/points /seapath/pose /tf --clock $(env HOME)/rosbags/MR_sc3_ouster_2048x10_cloudy/otter27-ouster-scen3-2048-cloudy/oust_goodweather_scen3_2048x10_2021-03-02-13-07-04.bag -s 10 -r 0.1 "/> 
+
+    
+    <!--- Sim Time -->
+    <param name="/use_sim_time" value="true" />
+
+    <!--- Run Rviz-->
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find lego_loam)/launch/test.rviz" />
+
+    <!--- TF -->
+    <node pkg="tf" type="static_transform_publisher" name="camera_init_to_map"  args="0 0 0 1.570795   0        1.570795 /map    /camera_init 10" />
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera" args="0 0 0 -1.570795 -1.570795 0        /camera /base_link   10" />
+    <node pkg="tf" type="static_transform_publisher" name="map_to_NED" args="-158.924, -75.964 -1.137  -0.655 0.022 -3.131 /NED /map   10" />
+
+    <!--- LeGO-LOAM -->    
+    <node pkg="lego_loam" type="imageProjection"    name="imageProjection"    output="screen"/>
+    <node pkg="lego_loam" type="featureAssociation" name="featureAssociation" output="screen"/>
+    <node pkg="lego_loam" type="mapOptmization"     name="mapOptmization"     output="screen"/>
+    <node pkg="lego_loam" type="transformFusion"    name="transformFusion"    output="screen"/>
+    <node pkg="lego_loam" type="groundTruth"        name="groundTruth"        output="screen"/>
+
+</launch>
