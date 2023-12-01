@@ -275,6 +275,7 @@ private:
     tf::StampedTransform laserOdometryTrans;
 
     bool isDegenerate;
+    bool isDegenerateRANSAC;
     cv::Mat matP;
 
     int frameCount;
@@ -439,6 +440,7 @@ public:
         laserOdometryTrans.child_frame_id_ = "laser_odom";
         
         isDegenerate = false;
+        isDegenerateRANSAC = false;
         matP = cv::Mat(6, 6, CV_32F, cv::Scalar::all(0));
 
         frameCount = skipFrameNum;
@@ -1280,7 +1282,7 @@ public:
 
                 float s = 1;
                 if (iterCount >= 5) {
-                    s = 1 - 3.6 * fabs(pd2) / sqrt(sqrt(pointSel.x * pointSel.x
+                    s = 1 - 1.8 * fabs(pd2) / sqrt(sqrt(pointSel.x * pointSel.x
                             + pointSel.y * pointSel.y + pointSel.z * pointSel.z));
                 }
 
@@ -1533,7 +1535,7 @@ void findCorrespondingCornerFeatures(int iterCount){
 
                 float s = 1;
                 if (iterCount >= 5) {
-                    s = 1 - 3.6 * fabs(ld2); // Only keep points with small p2l distances, small p2l --> s close to 1
+                    s = 1 - 1.8 * fabs(ld2); // Only keep points with small p2l distances, small p2l --> s close to 1
                 } // If ld2 = 0.5 --> s = 1 - 0.9 = 0.1
                 // Reduce to 0.25 since 20 Hz
                 // factor 1.8 --> 3.6
@@ -1612,7 +1614,7 @@ void findCorrespondingCornerFeatures(int iterCount){
         int largestSurfInlierCount = 0;
         float sampleTransform[6];
 
-        for (int i = 0; i < 500; i++){
+        for (int i = 0; i < 1000; i++){
             // Reset sample transform
             for (int p = 0; p < 6; p++) {
                 sampleTransform[p] = transformCur[p];
@@ -1718,7 +1720,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                     cv::eigen(matAtA, matE, matV);
                     matV.copyTo(matV2);
 
-                    isDegenerate = false;
+                    isDegenerateRANSAC = false;
                     float eignThre[5] = {10, 10, 10, 10, 10};
                     for (int i = 4; i >= 0; i--) {
                         if (matE.at<float>(0, i) < eignThre[i]) {
@@ -1733,7 +1735,8 @@ void findCorrespondingCornerFeatures(int iterCount){
                     matP = matV.inv() * matV2;
                 }
 
-                if (isDegenerate) {
+                if (isDegenerateRANSAC) {
+                    printf("Ransac degenerate\n");
                     cv::Mat matX2(5, 1, CV_32F, cv::Scalar::all(0));
                     matX.copyTo(matX2);
                     matX = matP * matX2;
@@ -1762,7 +1765,6 @@ void findCorrespondingCornerFeatures(int iterCount){
                                 pow(matX.at<float>(4, 0) * 100, 2));
                 //printf("deltaT: %f\ndeltaR: %f\n",deltaT,deltaR);
                 if (deltaR < 0.05 && deltaT < 0.05) {
-                    //printf("Ransac iteration converged at iteration %d\n",iterCount);
                     break;
                 }
 
@@ -1933,7 +1935,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                 tripod2 = tripod2Cloud->points[k];
                 tripod3 = tripod3Cloud->points[k];
                 float pl2 = pointToPlaneDist(transformedPoint, tripod1, tripod2, tripod3);
-                float c = 1 - 10.8 * pow(1.1,iterCount)* fabs(pl2); // Only keep points with small p2l distances, small p2l --> s close to 1
+                float c = 1 - 5.4 * pow(1.1,iterCount)* fabs(pl2)/sqrt(sqrt(point.x*point.x + point.y*point.y + point.z*point.z));
                 if (c > 0.1) {
                     surfInlierCount += 1;
                     inlierCloud.push_back(point);
@@ -1980,7 +1982,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                 tripod2 = tripod2Cloud->points[k];
                 float ld2 = pointToLineDist(transformedPoint, tripod1, tripod2);
 
-                float c = 1 - 9 * pow(1.01,iterCount) *fabs(ld2); // Only keep points with small p2l distances, small p2l --> s close to 1
+                float c = 1 - 3.6 * pow(1.01,iterCount) *fabs(ld2); // Only keep points with small p2l distances, small p2l --> s close to 1
                 if (c > 0.1) {
                     cornerInlierCount += 1;
                     inlierCloud.push_back(point);
@@ -2054,7 +2056,7 @@ void findCorrespondingCornerFeatures(int iterCount){
         pubSurfInlierCloud.publish(laserCloudOutMsg);
         }
         
-        if (inlierSetSize > 20) {
+        if (inlierSetSize > 10) {
             // Solve least squares problem with inliers
             cv::Mat matA(inlierSetSize, 5, CV_32F, cv::Scalar::all(0));
             cv::Mat matAt(5, inlierSetSize, CV_32F, cv::Scalar::all(0));
@@ -2139,6 +2141,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                             matV2.at<float>(i, j) = 0;
                         }
                         isDegenerate = true;
+                        printf("Degenerate case! \n");
                     } else {
                         break;
                     }
@@ -2147,6 +2150,7 @@ void findCorrespondingCornerFeatures(int iterCount){
             }
     
             if (isDegenerate) {
+                
                 cv::Mat matX2(5, 1, CV_32F, cv::Scalar::all(0));
                 matX.copyTo(matX2);
                 matX = matP * matX2;
@@ -2173,7 +2177,7 @@ void findCorrespondingCornerFeatures(int iterCount){
                             pow(matX.at<float>(3, 0) * 100, 2) +
                             pow(matX.at<float>(4, 0) * 100, 2));
             //printf("deltaT: %f\ndeltaR: %f\n",deltaT,deltaR);
-            if (deltaR < 0.01 && deltaT < 0.001) {
+            if (deltaR < 0.05 && deltaT < 0.01) {
                 printf("Odometry converged at iteration %d\n",iterCount);
 
                 sensor_msgs::PointCloud2 laserCloudOutMsg;
