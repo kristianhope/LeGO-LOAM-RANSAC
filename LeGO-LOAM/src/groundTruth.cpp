@@ -8,7 +8,7 @@ void posestampedCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
     static tf::TransformBroadcaster tfBroadcaster;
 
     tf::Quaternion z_body_to_sensor_ori = tf::Quaternion(0, 0, 0);
-    tf::Vector3 z_body_to_sensor_pos = tf::Vector3(0, 0, -0.670);
+    tf::Vector3 z_body_to_sensor_pos = tf::Vector3(0.870, -0.001, -0.670);
     
     /*
     tf::Quaternion body_init_to_NED_ori = tf::Quaternion(-0.009740638500177649, 0.0006472508840350607, 0.7569846883637315, -0.6533596885412861);
