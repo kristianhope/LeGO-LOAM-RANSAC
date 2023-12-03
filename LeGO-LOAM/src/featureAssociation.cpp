@@ -1080,6 +1080,7 @@ public:
     void findCorrespondingCornerFeatures(int iterCount){
 
         int cornerPointsSharpNum = cornerPointsSharp->points.size(); // CornerPointsSharp will be cleared and updated along the way
+        vector<float> allLd2Vec;
 
         // Process the feature points with largest curvature in the current point cloud,
         // and find two nearest points from features with largest curvature from previous point cloud.
@@ -1168,6 +1169,7 @@ public:
                 float m11 = ((x0 - x1)*(y0 - y2) - (x0 - x2)*(y0 - y1));
                 float m22 = ((x0 - x1)*(z0 - z2) - (x0 - x2)*(z0 - z1));
                 float m33 = ((y0 - y1)*(z0 - z2) - (y0 - y2)*(z0 - z1));
+    
 
                 float a012 = sqrt(m11 * m11  + m22 * m22 + m33 * m33);
 
@@ -1182,6 +1184,7 @@ public:
                 float lc = -((x1 - x2)*m22 + (y1 - y2)*m33) / a012 / l12;
 
                 float ld2 = a012 / l12; // point to line distance
+                allLd2Vec.push_back(ld2);
 
                 float s = 1;
                 float deltaT = sqrt(transformCur[3] * transformCur[3] + 
@@ -1205,11 +1208,20 @@ public:
                 }
             }
         }
+        float ld2mean = accumulate(allLd2Vec.begin(), allLd2Vec.end(), 0.0) / allLd2Vec.size();
+        float ld2var = 0;
+        for (int i = 0; i < allLd2Vec.size(); i++) {
+            ld2var += (allLd2Vec[i] - ld2mean) * (allLd2Vec[i] - ld2mean);
+        }
+        ld2var /= allLd2Vec.size();
+        if (iterCount % 10 == 0)
+            printf("%d ld2mean: %f, ld2var: %f\n",iterCount, ld2mean, ld2var);
     }
 
     void findCorrespondingSurfFeatures(int iterCount){
 
         int surfPointsFlatNum = surfPointsFlat->points.size();
+        vector<float> allPd2Vec;
 
         for (int i = 0; i < surfPointsFlatNum; i++) {
 
@@ -1302,27 +1314,35 @@ public:
                 pd /= ps;
 
                 float pd2 = pa * pointSel.x + pb * pointSel.y + pc * pointSel.z + pd;
+                allPd2Vec.push_back(pd2);
 
                 float s = 1;
                 float deltaT = sqrt(transformCur[3] * transformCur[3] + 
                                     transformCur[4] * transformCur[4] + 
                                     transformCur[5] * transformCur[5]);
                 if (iterCount >= 5) {
-                    s = 1 - 1.8*(pow(1.0,iterCount)) * fabs(pd2) / sqrt(sqrt(pointSel.x * pointSel.x
-                            + pointSel.y * pointSel.y + pointSel.z * pointSel.z));
+                    s = 1 - 1.8*(pow(1.0,iterCount)) * fabs(pd2);
                 }
 
                 if (s > 0.1 && pd2 != 0) {
                     coeff.x = s * pa;
                     coeff.y = s * pb;
                     coeff.z = s * pc;
-                    coeff.intensity = s * pd2;
+                    coeff.intensity = s * fabs(pd2);
 
                     laserCloudOri->push_back(surfPointsFlat->points[i]);
                     coeffSel->push_back(coeff);
                 }
             }
         }
+        float pd2mean = accumulate(allPd2Vec.begin(), allPd2Vec.end(), 0.0) / allPd2Vec.size();
+        float pd2var = 0;
+        for (int i = 0; i < allPd2Vec.size(); i++) {
+            pd2var += (allPd2Vec[i] - pd2mean) * (allPd2Vec[i] - pd2mean);
+        }
+        pd2var /= allPd2Vec.size();
+        if (iterCount % 10 == 0)
+            printf("%d pd2mean: %f, pd2var: %f\n", iterCount, pd2mean, pd2var);
     }
 
     bool calculateTransformationSurf(int iterCount){

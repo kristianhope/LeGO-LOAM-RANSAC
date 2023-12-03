@@ -1,8 +1,7 @@
 <launch>
     
     <node pkg="rosbag" type="play" name="rosbag_play" args=" --topics /os_cloud_node/points /seapath/pose /tf --clock $(env HOME)/rosbags/MR_sc2_ouster_2048x10_cloudy/otter27-ouster-scen2-2048-cloudy/oust_goodweather_scen2_2048x10_2021-03-02-13-01-43.bag -s 15 -r 1.0 "/> 
-
-    
+   
     <!--- Sim Time -->
     <param name="/use_sim_time" value="true" />
 
@@ -12,7 +11,7 @@
     <!--- TF -->
     <node pkg="tf" type="static_transform_publisher" name="camera_init_to_map"  args="0 0 0 1.570795   0        1.570795 /map    /camera_init 10" />
     <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera" args="0 0 0 -1.570795 -1.570795 0        /camera /base_link   10" />
-    <node pkg="tf" type="static_transform_publisher" name="map_to_NED" args="-59.208, -100.185 -0.768  -2.784 0.013 -3.134 /NED /map   10" />
+    <node pkg="tf" type="static_transform_publisher" name="map_to_NED" args="-59.094, -100.143 -0.768  -2.784 0.013 -3.134 /NED /map   10" />
 
     <!--- LeGO-LOAM -->    
     <node pkg="lego_loam" type="imageProjection"    name="imageProjection"    output="screen"/>
