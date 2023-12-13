@@ -1754,7 +1754,7 @@ public:
             return;
 
 
-        for (int iterCount2 = 0; iterCount2 < 25; iterCount2++) {
+        for (int iterCount2 = 0; iterCount2 < 15; iterCount2++) {
 
             laserCloudOri->clear();
             coeffSel->clear();
