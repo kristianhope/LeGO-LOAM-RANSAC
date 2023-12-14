@@ -1,6 +1,6 @@
 <launch>
     
-    <node pkg="rosbag" type="play" name="rosbag_play" args=" --topics /os_cloud_node/points /seapath/pose /tf --clock $(env HOME)/rosbags/MR_sc2_ouster_2048x10_cloudy/otter27-ouster-scen2-2048-cloudy/oust_goodweather_scen2_2048x10_2021-03-02-13-01-43.bag -s 15 -r 0.1 "/> 
+    <node pkg="rosbag" type="play" name="rosbag_play" args=" --topics /os_cloud_node/points /seapath/pose /tf --clock $(env HOME)/rosbags/MR_sc2_ouster_2048x10_cloudy/otter27-ouster-scen2-2048-cloudy/oust_goodweather_scen2_2048x10_2021-03-02-13-01-43.bag -s 15 -r 0.5 "/> 
 
     
     <!--- Sim Time -->
