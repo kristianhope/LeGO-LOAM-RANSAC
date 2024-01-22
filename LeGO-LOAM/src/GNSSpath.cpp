@@ -1,5 +1,7 @@
 #include "utility.h"
 
+#TODO 1: not working, need to fix
+
 double reference_latitude = 63.43967123888433; // Set your reference latitude here
 double reference_longitude = 10.398784289136529; // Set your reference longitude here
 const double meters_per_degree_lat = 111139; // Approximate meters per degree of latitude

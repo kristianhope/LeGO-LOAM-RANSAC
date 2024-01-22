@@ -2436,9 +2436,6 @@ void findCorrespondingCornerFeatures(int iterCount){
                 break;
         }
 
-        //printf("x: %f\ny: %f\nz: %f\n", transformCur[3], transformCur[4], transformCur[5]);
-        //printf("xy: %f\n", sqrt(pow(transformCur[3],2) + pow(transformCur[5],2)));
-
         pcl::toROSMsg(*laserCloudOri, laserCloudOutMsg);
 	    laserCloudOutMsg.header.stamp = cloudHeader.stamp;
 	    laserCloudOutMsg.header.frame_id = "camera";
