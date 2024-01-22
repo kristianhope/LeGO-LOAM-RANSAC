@@ -1,7 +1,7 @@
 <launch>
     
     <node pkg="rosbag" type="play" name="rosbag_play" args=" --topics /os_cloud_node/points /seapath/pose /tf --clock $(env HOME)/rosbags/MR_sc3_ouster_2048x10_cloudy/otter27-ouster-scen3-2048-cloudy/oust_goodweather_scen3_2048x10_2021-03-02-13-07-04.bag -s 10 -r 1.0 "/> 
-    
+    <node pkg="rosbag" type="record" name="bag_recorder" output="screen" args="-O $(env HOME)/rosbags/MR_sc1_ouster_2048x10_cloudy/otter27-ouster-scen1-2048-cloudy/sc1_RANSAC.bag /tf /ground_truth"  />
     <!--- Sim Time -->
     <param name="/use_sim_time" value="true" />
 

@@ -1,6 +1,8 @@
 <launch>
     
-    <node pkg="rosbag" type="play" name="rosbag_play" args=" --topic /tf /os_cloud_node/points --clock $(env HOME)/rosbags/MR_sc1_ouster_2048x10_cloudy/otter27-ouster-scen1-2048-cloudy/oust_goodweather_scen1_2048x10_2021-03-02-12-41-46.bag -s 10 -r 0.1"/> 
+    <node pkg="rosbag" type="play" name="rosbag_play" args=" --topics /os_cloud_node/points /seapath/pose /tf --clock $(env HOME)/rosbags/otter27-ouster-scen2-2048-badw/ouster2048x10_2021-03-01-13-12-13.bag -s 15 -r 0.1 "/> 
+        <node pkg="rosbag" type="record" name="bag_recorder" output="screen" args="-O $(env HOME)/rosbags/otter27-ouster-scen2-2048-badw/sc2_badw.bag /tf /ground_truth"/>
+
     
     <!--- Sim Time -->
     <param name="/use_sim_time" value="true" />
@@ -11,7 +13,7 @@
     <!--- TF -->
     <node pkg="tf" type="static_transform_publisher" name="camera_init_to_map"  args="0 0 0 1.570795   0        1.570795 /map    /camera_init 10" />
     <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera" args="0 0 0 -1.570795 -1.570795 0        /camera /base_link   10" />
-    <node pkg="tf" type="static_transform_publisher" name="map_to_NED" args="-45.474, -85.360 -0.196 -2.306 0.028 -3.135  /NED /map   10" />
+    <node pkg="tf" type="static_transform_publisher" name="map_to_NED" args="-69.783 -103.452 -1.502  -2.574  0.004 3.139  /NED /map   10" />
 
     <!--- LeGO-LOAM -->    
     <node pkg="lego_loam" type="imageProjection"    name="imageProjection"    output="screen"/>
@@ -20,5 +22,4 @@
     <node pkg="lego_loam" type="transformFusion"    name="transformFusion"    output="screen"/>
     <node pkg="lego_loam" type="groundTruth"        name="groundTruth"        output="screen"/>
     <node pkg="lego_loam" type="GNSSpath"        name="GNSSpath"        output="screen"/>
-
 </launch>
